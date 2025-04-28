@@ -1,0 +1,49 @@
+---
+title: 'Gaussian Processes for Time Series Modelling'
+description: |
+  'Honours project for Statistics & Data Science'
+author:
+  - name: 'Azar Raphaela'
+  - name: 'Gumede Sbonelo'
+date: today
+format: beamer
+---
+
+```{r Setup}
+#| echo: FALSE
+#| include: FALSE
+
+packs = c('dplyr', 'forecast', 'fpp2', 'ggfortify', 'ggplot2', 'knitr')
+
+for(pack in packs){
+	if(!requireNamespace(pack, quietly = TRUE)){
+		install.packages(pack, quiet = TRUE)
+	}
+	library(pack, character.only = TRUE)
+}
+```
+
+## Exploratory Data Analysis
+
+```{r EDA}
+#| echo: FALSE
+
+autoplot(EuStockMarkets[, 'FTSE']) +
+	labs(title = 'Daily Closing Prices of Major European Stock Indices, 1991-1998',
+		  x = 'Time',
+		  y = 'FTSE') +
+	theme_minimal()
+```
+
+Using moving average smooting
+```{r MA}
+#| echo: FALSE
+
+autoplot(EuStockMarkets[, 'FTSE']) +
+	labs(title = 'Daily Closing Prices of Major European Stock Indices, 1991-1998',
+		  x = 'Time',
+		  y = 'FTSE') +
+	theme_minimal()
+```
+
+
