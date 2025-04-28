@@ -1,7 +1,5 @@
 ---
 title: 'Gaussian Processes for Time Series Modelling'
-description: |
-  'Honours project for Statistics & Data Science'
 author:
   - name: 'Azar Raphaela'
   - name: 'Gumede Sbonelo'
@@ -13,37 +11,87 @@ format: beamer
 #| echo: FALSE
 #| include: FALSE
 
-packs = c('dplyr', 'forecast', 'fpp2', 'ggfortify', 'ggplot2', 'knitr')
+packs = c('dplyr', 'forecast', 'fpp2', 'ggfortify', 'ggplot2', 'knitr', 'splines')
 
 for(pack in packs){
-	if(!requireNamespace(pack, quietly = TRUE)){
-		install.packages(pack, quiet = TRUE)
+	if(!requireNamespace(pack, quietly=TRUE)){
+		install.packages(pack, quiet=TRUE)
 	}
-	library(pack, character.only = TRUE)
+	library(pack, character.only=TRUE)
 }
 ```
 
-## Exploratory Data Analysis
+## Dataset
 
 ```{r EDA}
 #| echo: FALSE
 
-autoplot(EuStockMarkets[, 'FTSE']) +
-	labs(title = 'Daily Closing Prices of Major European Stock Indices, 1991-1998',
-		  x = 'Time',
-		  y = 'FTSE') +
+df <- EuStockMarkets[, 'FTSE'] # Load data
+
+p <- autoplot(df) +
+	labs(title='Daily Closing Prices of FTSE (1991-1998)',
+		  x='Time',
+		  y='FTSE') + 
 	theme_minimal()
+p # Display plot
 ```
 
-Using moving average smooting
-```{r MA}
+## CMA(k = 365)
+
+```{r CMA}
 #| echo: FALSE
 
-autoplot(EuStockMarkets[, 'FTSE']) +
-	labs(title = 'Daily Closing Prices of Major European Stock Indices, 1991-1998',
-		  x = 'Time',
-		  y = 'FTSE') +
+p + autolayer(ma(df,365), series='MA365', size=2, color='firebrick')
+```
+
+## Discussion
+
+There are infinite models that we could use. However, since we picked up the trend using CMA(k=365) we can make an inspired guess. A second degree polynomial spline seems to be appropriate.
+
+Let us divide the data into a train and test set in order to compare model performance.
+
+## Partition
+
+```{r Partition}
+#| echo: FALSE
+
+n <- length(df) # Number of observations in the data
+train_end_index <- floor(0.7 * n) # (70/30)% split of the data
+
+train <- window(df, end = time(df)[train_end_index]) # Training data
+test <- window(df, start = time(df)[train_end_index + 1]) # Testing data
+
+# Plot the train vs test set
+autoplot(df) +
+	autolayer(train, color = 'lightskyblue', size = 2, series = 'Train') +
+	autolayer(test, color = 'darkorange', size = 2, series = 'Test') +
+	labs(title='Daily Closing Prices of FTSE (1991-1998)',
+		  x='Time',
+		  y='FTSE') + 
 	theme_minimal()
 ```
 
+## Spline
 
+```{r Spline}
+#| echo: FALSE
+
+train_time <- as.numeric(time(train)) # Extract the time component for training data
+test_time <- as.numeric(time(test)) # Extract the time component for testing data
+
+fit <- lm(train ~ bs(train_time, df = 2)) # Fit a spline model of degree 2
+
+train_preds <- predict(fit, newdata=data.frame(train_time=train_time)) # Spline on training data
+test_preds <- predict(fit, newdata=data.frame(train_time=test_time)) # Extrapolate
+
+train_ts <- ts(train_preds, start=start(train), frequency=frequency(train)) # Convert to ts
+test_ts <- ts(test_preds, start=start(test), frequency=frequency(test)) # Convert to ts
+
+autoplot(df) +
+	autolayer(train_ts, color='lightskyblue', size=2, series='Train Spline') +
+	autolayer(test_ts, color='darkorange', size=2, series='Test Spline') +
+	labs(title='Daily Closing Prices of FTSE (1991-1998)',
+		  x='Time',
+		  y='FTSE') + 
+	theme_minimal()
+```
