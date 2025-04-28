@@ -1,8 +1,11 @@
 ---
 title: 'Gaussian Processes for Time Series Modelling'
 author:
-  - name: 'Azar Raphaela'
-  - name: 'Gumede Sbonelo'
+  - 'Azar Raphaela'
+  - 'Gumede Sbonelo'
+institute:  
+  - 'University of Cape Town'
+  - 'Supervisor: Dr. Birgit Erni'
 date: today
 format: beamer
 ---
@@ -22,34 +25,42 @@ for(pack in packs){
 }
 ```
 
-## Dataset
+## Plot of the dataset
 
 ```{r EDA}
 #| echo: FALSE
 
 df <- EuStockMarkets[, 'FTSE'] # Load data
 
-p <- autoplot(df) +
+autoplot(df) +
 	labs(title='Daily Closing Prices of FTSE (1991-1998)',
 		  x='Time',
 		  y='FTSE') + 
 	theme_minimal()
-p # Display plot
 ```
 
-## CMA(k = 365)
+## Moving average smooting
 
 ```{r CMA}
 #| echo: FALSE
 
-p + autolayer(ma(df,365), series='MA365', size=2, color='firebrick')
+autoplot(df) +
+	autolayer(ma(df,365), series='MA 365', size=1.5) +
+	scale_color_manual(values=c('MA 365' = 'firebrick')) +
+	labs(title='Daily Closing Prices of FTSE (1991-1998)',
+		  x='Time',
+		  y='FTSE',
+		  color='Legend') + 
+	theme_minimal() +
+	theme(legend.text = element_text(size = 14), 
+			legend.title = element_text(size = 16))
 ```
 
 ## Discussion
 
-There are infinite models that we could use. However, since we picked up the trend using CMA(k=365) we can make an inspired guess. A second degree polynomial spline seems to be appropriate.
-
-Let us divide the data into a train and test set in order to compare model performance.
+There are infinite models that we could use. However, since we picked up the trend 
+using CMA(k=365) we can make an inspired guess. 
+A second degree polynomial spline seems to be appropriate.
 
 ## Partition
 
@@ -64,17 +75,21 @@ test <- window(df, start = time(df)[train_end_index + 1]) # Testing data
 
 # Plot the train vs test set
 autoplot(df) +
-	autolayer(train, color = 'lightskyblue', size = 2, series = 'Train') +
-	autolayer(test, color = 'darkorange', size = 2, series = 'Test') +
+	autolayer(train, series='Train', size=1.5) +
+	autolayer(test, series='Test', size=1.5) +
+	scale_color_manual(values=c('Train'='lightskyblue', 'Test'='darkorange')) +
 	labs(title='Daily Closing Prices of FTSE (1991-1998)',
 		  x='Time',
-		  y='FTSE') + 
-	theme_minimal()
+		  y='FTSE',
+		  color='Legend') + 
+	theme_minimal() +
+	theme(legend.text = element_text(size = 14), 
+			legend.title = element_text(size = 16))
 ```
 
-## B-Spline
+## B-splines
 
-### Base Case
+### Base case
 
 $$
 B_{i, 0}(t) := 
@@ -84,7 +99,7 @@ B_{i, 0}(t) :=
 \end{cases}
 $$
 
-### Recursive Step
+### Recursive step
 
 $$
 B_{i,p}(t) := 
@@ -96,7 +111,7 @@ $$
 
 $t$ is the covariate and $p$ is the degree of the polynomial.
 
-## Spline
+## B-spline of order 2 fit
 
 ```{r Spline}
 #| echo: FALSE
@@ -113,27 +128,40 @@ train_ts <- ts(train_preds, start=start(train), frequency=frequency(train)) # Co
 test_ts <- ts(test_preds, start=start(test), frequency=frequency(test)) # Convert to ts
 
 autoplot(df) +
-	autolayer(train_ts, color='lightskyblue', size=2, series='Train Spline') +
-	autolayer(test_ts, color='darkorange', size=2, series='Test Spline') +
+	autolayer(train_ts, series='Train Spline', size=1.5) +
+	autolayer(test_ts, series='Test Spline', size=1.5) +
+	scale_color_manual(values=c('Train Spline'='lightskyblue', 
+										 'Test Spline'='darkorange')) +
 	labs(title='Daily Closing Prices of FTSE (1991-1998)',
 		  x='Time',
-		  y='FTSE') + 
-	theme_minimal()
+		  y='FTSE',
+		  color='Legend') + 
+	theme_minimal() +
+	theme(legend.text = element_text(size = 14), 
+			legend.title = element_text(size = 16))
 ```
 
 ## Discussion
 
 ### Problem
 
-Robust use of the polynomial model requires knowledge of how the coefficients interact to control functional behaviour, 
+Robust use of the polynomial model requires knowledge of how the coefficients 
+interact to control functional behaviour, 
 which becomes unmanageable as the order of the polynomial grows.
 
 ### Solution
 
-A Gaussian Process defines a probability distribution over functions; 
-in other words, it is an entire function from the covariate space to the real-valued output space.
+A Gaussian Process defines a probability distribution over functions; in other words, 
+it is an entire function from the covariate space to the real-valued output space.
 
-## Gaussian Process
+## Gaussian process
+
+A time continuous stochastic process $\{X_{t}; \ t \in T\}$ is Gaussian 
+if and only if for every finite set of indices $t_{1},...,t_{k}$ in the index set $T$
+
+$$\mathbf{X}_{t_{1},...,t_{k}} = (X_{t_{1}},...,X_{t_{k}})$$ 
+
+is a multivariate Gaussian random variable.
 
 ```{r GP}
 #| echo: FALSE
@@ -154,9 +182,11 @@ x <- 22 * (0:(n-1)) / (n-1) - 11
 # Parameters that specify our GP
 alpha_true <- 3
 rho_true <- 5.5
+sigma_true <- 2
 
 # Pack everything together
-simu_data <- list(alpha=alpha_true, rho=rho_true, N=n, x=x)
+simu_data <- list(alpha=alpha_true, rho=rho_true, sigma=sigma_true, 
+						N=n, x=x)
 
 # Sample from the MVN(0, Gram-matrix)
 simu_fit <- stan(file='stan_programs/presentation.stan', 
@@ -166,7 +196,22 @@ simu_fit <- stan(file='stan_programs/presentation.stan',
 
 # Visualization code
 source('gp_utility.R', local=util)
+```
 
-util$plot_gp_prior_realizations(simu_fit, x, 'Realizations')
+## Prior realizations
 
+```{r PR}
+#| echo: FALSE
+#| warning: FALSE
+
+util$plot_gp_prior_realizations(simu_fit, x, 'Prior realizations')
+```
+
+## Prior quantiles
+
+```{r PQ}
+#| echo: FALSE
+#| warning: FALSE
+
+util$plot_gp_prior_quantiles(simu_fit, x, 'Prior quantiles')
 ```

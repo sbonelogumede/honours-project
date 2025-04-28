@@ -4,6 +4,7 @@ data {
 
    real<lower=0> rho;
    real<lower=0> alpha;
+   real<lower=0> sigma;
 }
 
 transformed data {
@@ -17,4 +18,5 @@ model {}
 
 generated quantities {
    vector[N] f = multi_normal_cholesky_rng(rep_vector(0, N), L_cov);
+   real y[N] = normal_rng(f, sigma);
 }
