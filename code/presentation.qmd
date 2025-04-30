@@ -8,20 +8,10 @@ institute:
   - 'Supervisor: Dr. Birgit Erni'
 date: today
 format: 
-  beamer:
-    pdfengine: pdflatex
-    include-in-header: 
-      text: |
-        \makeatletter
-        \@fleqntrue
-        \makeatother
-        \usepackage{etex}
-        \usepackage{tabularx}
-        \usepackage{hyperref}
-        \usepackage{graphicx}
-        \maxdeadcycles=1000
-        \extrarowheight=5pt
-        \maxdimen=16383.99999pt
+  revealjs:
+    incremental: true
+    transition: fade
+    css: styles.css
 ---
 
 ```{r Setup}
@@ -29,8 +19,10 @@ format:
 #| include: FALSE
 #| warning: FALSE
 
-packs = c('dplyr', 'forecast', 'fpp2', 'ggfortify', 'ggplot2', 'knitr', 
-			 'splines', 'rstan')
+options(repos=c(CRAN='https://cloud.r-project.org'))
+
+packs=c('dplyr', 'forecast', 'fpp2', 'ggfortify', 'gifski', 'ggplot2', 'knitr', 
+		  'splines', 'rstan')
 
 for(pack in packs){
 	if(!requireNamespace(pack, quietly=TRUE)){
@@ -53,24 +45,6 @@ autoplot(df) +
 		  x='Time',
 		  y='FTSE') + 
 	theme_minimal()
-```
-
-## Moving average smooting
-
-```{r CMA}
-#| echo: FALSE
-#| warning: FALSE
-
-autoplot(df) +
-	autolayer(ma(df,30), series='MA 30', size=1.5) +
-	scale_color_manual(values=c('MA 30' = 'firebrick')) +
-	labs(title='Daily Closing Prices of FTSE (1991-1998)',
-		  x='Time',
-		  y='FTSE',
-		  color='Legend') + 
-	theme_minimal() +
-	theme(legend.text = element_text(size = 14), 
-			legend.title = element_text(size = 16))
 ```
 
 ```{r Partition}
@@ -120,17 +94,16 @@ time <- 131 : (n_new - 130) # First and last 130 observations are NA
 linear <- lm(trend ~ time)
 ```
 
-## B-spline of order 2 fit
-
-```{r Spline}
+```{r Spline-Animation}
 #| echo: FALSE
+#| eval: TRUE
+#| include: FALSE
 #| warning: FALSE
 
 train_time <- as.numeric(time(train)) # Extract the time component for training data
 test_time <- as.numeric(time(test)) # Extract the time component for testing data
-for(dof in 3:11){
-	Sys.sleep(3)
-	
+
+for(dof in 2:10){
 	spline_model <- lm(train ~ bs(train_time, df=dof)) # Fit a spline model of degree 2
 	train_preds <- predict(spline_model, newdata=data.frame(train_time=train_time)) # Spline on training data
 	test_preds <- predict(spline_model, newdata=data.frame(train_time=test_time)) # Extrapolate
@@ -149,9 +122,16 @@ for(dof in 3:11){
 		theme_minimal() +
 		theme(legend.text = element_text(size = 14), 
 				legend.title = element_text(size = 16))
-	print(p)
+	ggsave(sprintf('../images/frame%02d.png', dof), p, width=12, height=8, dpi=300)
 	}
+
+png_files <- list.files('../images', full.names=TRUE)
+gifski(png_files, gif_file='spline_animation.gif', width=1200, height=800, delay=1)
 ```
+
+## Spline Animation
+
+![](spline_animation.gif)
 
 ## Discussion
 
@@ -166,24 +146,23 @@ Use Gaussian processes to model the data generating process.
 GPs consider all the observations and their correlations.
 
 ## Gaussian process
+
 ### Definition
-\begin{flushleft}
+
 A time continuous stochastic process $\{X_{t}; \ t \in T\}$ is Gaussian 
-if and only if for every finite set of indices $t_{1},...,t_{k}$ in the index set $T$\\
-$\mathbf{X}_{t_{1},...,t_{k}} = (X_{t_{1}},...,X_{t_{k}})$\\
+if and only if for every finite set of indices $t_{1},...,t_{k}$ in the index set $T$
+$$\mathbf{X}_{t_{1},...,t_{k}} = (X_{t_{1}},...,X_{t_{k}})$$
 is a multivariate Gaussian random variable.
-\end{flushleft}
 
 ### Meaning
-\begin{flushleft}
-	$f \sim GP(m, k) \rightarrow f_{n} \sim MVN(\mathbf{m}, \mathbf{K})$\\
-	$\pi(y_{n};f(x_{n}),\phi) \rightarrow \pi(y_{n}; f_{n}, \phi)$
-\end{flushleft}
 
-## Parameters
+$$f \sim GP(m, k) \rightarrow f_{n} \sim MVN(\mathbf{m}, \mathbf{K})$$
+$$\pi(y_{n};f(x_{n}),\phi) \rightarrow \pi(y_{n}; f_{n}, \phi)$$
+
+## Mean Vector
 
 $$
-\mathbf{m} = \resizebox{0.14\textwidth}{!}{$
+\mathbf{m} =
 \begin{bmatrix}
 \mu(x_{1}^{\text{obs}}) \\
 \vdots \\
@@ -192,10 +171,12 @@ $$
 \vdots \\
 \mu(x_{N_{\text{pred}}}^{\text{pred}})
 \end{bmatrix}
-$}
 $$
+
+## Covariance-Matrix
+
 $$
-\mathbf{K} = \resizebox{0.9\textwidth}{!}{$
+\mathbf{K} = 
 \begin{bmatrix}
 k(x_{1}^{\text{obs}}, x_{1}^{\text{obs}}) & \cdots & k(x_{1}^{\text{obs}}, x_{N_{\text{obs}}}^{\text{obs}}) & \quad & k(x_{1}^{\text{obs}}, x_{1}^{\text{pred}}) & \cdots & k(x_{1}^{\text{obs}}, x_{N_{\text{pred}}}^{\text{pred}}) \\
 \vdots & \ddots & \vdots & & \vdots & \ddots & \vdots \\
@@ -204,7 +185,6 @@ k(x_{1}^{\text{pred}}, x_{1}^{\text{obs}}) & \cdots & k(x_{1}^{\text{pred}}, x_{
 \vdots & \ddots & \vdots & & \vdots & \ddots & \vdots \\
 k(x_{N_{\text{pred}}}^{\text{pred}}, x_{1}^{\text{obs}}) & \cdots & k(x_{N_{\text{pred}}}^{\text{pred}}, x_{N_{\text{obs}}}^{\text{obs}}) & \quad & k(x_{N_{\text{pred}}}^{\text{pred}}, x_{1}^{\text{pred}}) & \cdots & k(x_{N_{\text{pred}}}^{\text{pred}}, x_{N_{\text{pred}}}^{\text{pred}})
 \end{bmatrix}
-$}
 $$
 
 ```{r GP}
