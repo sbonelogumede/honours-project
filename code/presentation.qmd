@@ -11,7 +11,7 @@ format:
   revealjs:
     incremental: true
     transition: fade
-    css: styles.css
+    css: css/styles.css
 ---
 
 ```{r Setup}
@@ -21,8 +21,8 @@ format:
 
 options(repos=c(CRAN='https://cloud.r-project.org'))
 
-packs=c('dplyr', 'forecast', 'fpp2', 'ggfortify', 'gifski', 'ggplot2', 'knitr', 
-		  'splines', 'rstan')
+packs <- c('dplyr', 'forecast', 'fpp2', 'ggfortify', 'gifski', 'ggplot2', 'knitr', 
+			  'splines', 'rstan')
 
 for(pack in packs){
 	if(!requireNamespace(pack, quietly=TRUE)){
@@ -30,6 +30,8 @@ for(pack in packs){
 	}
 	library(pack, character.only=TRUE)
 }
+
+colors <- c('skyblue', 'seagreen', 'pink', 'cyan', 'gray', 'salmon', 'steelblue')
 ```
 
 ## Plot of the dataset
@@ -56,9 +58,73 @@ train_end_index <- floor(0.7 * n) # (70/30)% split of the data
 
 train <- window(df, end = time(df)[train_end_index]) # Training data
 test <- window(df, start = time(df)[train_end_index + 1]) # Testing data
+train_time <- as.numeric(time(train)) # Extract the time component for training data
+test_time <- as.numeric(time(test)) # Extract the time component for testing data
 ```
 
-## B-splines
+## Linear model
+
+### Definition
+
+A linear model refers to any model which assumes linearity in the system.
+
+### Population model
+
+$$
+\mathbf{y} = 
+\mathbf{X} \boldsymbol{\beta} + \mathbf{e}, \quad 
+\text{where} \quad
+\mathbf{e} \sim \mathcal{N}(\mathbf{0}, \mathbf{I}_{n}\sigma^2)
+$$
+
+### Fitted model
+
+$$\hat{\mathbf{y}} = \mathbf{X} \hat{\boldsymbol{\beta}}$$
+
+## Linear model plot
+
+```{r Linear-Model}
+#| echo: FALSE
+#| eval: TRUE
+#| include: TRUE
+#| warning: FALSE
+
+linear_model <- lm(train ~ train_time)
+	train_preds <- predict(linear_model, newdata=data.frame(train_time=train_time)) # Spline on training data
+	test_preds <- predict(linear_model, newdata=data.frame(train_time=test_time)) # Extrapolate
+	train_ts <- ts(train_preds, start=start(train), frequency=frequency(train)) # Convert to ts
+	test_ts <- ts(test_preds, start=start(test), frequency=frequency(test))
+	
+	p <- autoplot(df) +
+		autolayer(train_ts, series='Train Linear Model', size=1.5) +
+		autolayer(test_ts, series='Test Linear Model', size=1.5) +
+		scale_color_manual(values=c('Train Linear Model'='lightskyblue', 
+											 'Test Linear Model'='darkorange')) +
+		labs(title='Daily Closing Prices of FTSE (1991-1998)',
+			  x='Time',
+			  y='FTSE',
+			  color='Legend') + 
+		theme_minimal() +
+		theme(legend.text = element_text(size = 14), 
+				legend.title = element_text(size = 16))
+	print(p)
+```
+
+## Discussion
+
+### Problem
+
+Linear models are not flexible enough to capture the non-linearity of the data.
+
+### Solution
+
+Try using non-linear models such as polynomial regression or B-splines.
+
+## B-spline
+
+### Definition
+
+A B-spline is a piecewise polynomial of order n.
 
 ### Base case
 
@@ -77,61 +143,44 @@ B_{i,p}(t) :=
 \frac{t - t_{i}}{t_{i+p} - t_{i}} B_{i, p-1}(t) 
 + \frac{t_{i+p+1}-t}{t_{i+p+1}-t_{i+1}} B_{i+1, p-1}(t)
 $$
+$$\text{where,} \; t \; \text{is the covariate and} \; p \; \text{is the degree of the polynomial.}$$
 
-#### Where
+```{r Spline-model}
+color_values <- c()
 
-$t$ is the covariate and $p$ is the degree of the polynomial.
-
-```{r Decompose}
-#| echo: FALSE
-#| eval: FALSE
-
-decomp_model <- decompose(train, type='multiplicative') # Decompose the training data
-trend <- na.omit(decomp_model) # Remove missing values
-n_old <- length(decomp$trend)
-n_new <- length(trend)
-time <- 131 : (n_new - 130) # First and last 130 observations are NA
-linear <- lm(trend ~ time)
-```
-
-```{r Spline-Animation}
-#| echo: FALSE
-#| eval: TRUE
-#| include: FALSE
-#| warning: FALSE
-
-train_time <- as.numeric(time(train)) # Extract the time component for training data
-test_time <- as.numeric(time(test)) # Extract the time component for testing data
-
-for(dof in 2:10){
-	spline_model <- lm(train ~ bs(train_time, df=dof)) # Fit a spline model of degree 2
-	train_preds <- predict(spline_model, newdata=data.frame(train_time=train_time)) # Spline on training data
-	test_preds <- predict(spline_model, newdata=data.frame(train_time=test_time)) # Extrapolate
-	train_ts <- ts(train_preds, start=start(train), frequency=frequency(train)) # Convert to ts
+for(dof in 2:8){
+	# Fit a spline model
+	spline_model <- lm(train ~ bs(train_time, df=dof))
+	
+	# Make predictions
+	train_preds <- predict(spline_model, newdata=data.frame(train_time=train_time))
+	test_preds <- predict(spline_model, newdata=data.frame(train_time=test_time))
+	
+	# Convert to time series
+	train_ts <- ts(train_preds, start=start(train), frequency=frequency(train))
 	test_ts <- ts(test_preds, start=start(test), frequency=frequency(test))
 	
-	p <- autoplot(df) +
-		autolayer(train_ts, series='Train Spline', size=1.5) +
-		autolayer(test_ts, series='Test Spline', size=1.5) +
-		scale_color_manual(values=c('Train Spline'='lightskyblue', 
-											 'Test Spline'='darkorange')) +
-		labs(title='Daily Closing Prices of FTSE (1991-1998)',
-			  x='Time',
-			  y='FTSE',
-			  color='Legend') + 
-		theme_minimal() +
-		theme(legend.text = element_text(size = 14), 
-				legend.title = element_text(size = 16))
-	ggsave(sprintf('../images/frame%02d.png', dof), p, width=12, height=8, dpi=300)
-	}
+	# Create series name
+	train_name <- paste0('Train Spline df=', dof)
+	test_name <- paste0('Test Spline df=', dof)
+	
+	# Add layers to the plot
+	p <- p + 
+		autolayer(train_ts, series=train_name, size=1.2) +
+		autolayer(test_ts, series=test_name, size=1.2)
+	
+	# Assign colors to the named vector
+	color_idx <- (dof-1) %% length(colors) + 1
+	color_values[train_name] <- paste0('light', colors[color_idx])
+	color_values[test_name] <- paste0(colors[color_idx])
+}
 
-png_files <- list.files('../images', full.names=TRUE)
-gifski(png_files, gif_file='spline_animation.gif', width=1200, height=800, delay=1)
+# Add a custom color scale - using the first two colors for each df value
+p <- p + scale_color_manual(values=color_values)
+
+# Display the final plot
+print(p)
 ```
-
-## Spline Animation
-
-![](spline_animation.gif)
 
 ## Discussion
 
@@ -189,8 +238,10 @@ $$
 
 ```{r GP}
 #| echo: FALSE
+#| eval: TRUE
+#| include: FALSE
 #| warning: FALSE
-#| eval: FALSE
+
 rstan_options(auto_write=TRUE)
 options(mc.cores=parallel::detectCores())
 parallel:::setDefaultClusterOptions(setup_strategy='sequential')
@@ -220,14 +271,26 @@ simu_fit <- stan(file='stan_programs/presentation.stan',
 
 # Visualization code
 source('gp_utility.R', local=util)
+
+# Save util and simu_fit for later
+# saveRDS(util, file='../objects/util_env.rds')
+# saveRDS(simu_fit, file='../objects/simu_fit.rds')
+# saveRDS(x, file='../objects/x.rds')
 ```
 
 ## Prior realizations
 
 ```{r PR}
 #| echo: FALSE
+#| eval: TRUE
+#| include: TRUE
 #| warning: FALSE
-#| eval: FALSE
+
+# util <- readRDS('../objects/util_env.rds')
+# simu_fit <- readRDS('../objects/simu_fit.rds')
+# x <- readRDS('../objects/x.rds')
+# source('gp_utility.R', local=util)
+
 util$plot_gp_prior_realizations(simu_fit, x, 'Prior realizations')
 ```
 
@@ -235,7 +298,9 @@ util$plot_gp_prior_realizations(simu_fit, x, 'Prior realizations')
 
 ```{r PQ}
 #| echo: FALSE
+#| eval: TRUE
+#| include: TRUE
 #| warning: FALSE
-#| eval: FALSE
+
 util$plot_gp_prior_quantiles(simu_fit, x, 'Prior quantiles')
 ```

@@ -33,7 +33,7 @@
     }
   </style>
   <link rel="stylesheet" href="presentation_files/libs/revealjs/dist/theme/quarto.css">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="css/styles.css">
   <link href="presentation_files/libs/revealjs/plugin/quarto-line-highlight/line-highlight.css" rel="stylesheet">
   <link href="presentation_files/libs/revealjs/plugin/reveal-menu/menu.css" rel="stylesheet">
   <link href="presentation_files/libs/revealjs/plugin/reveal-menu/quarto-menu.css" rel="stylesheet">
@@ -356,8 +356,35 @@ Gumede Sbonelo
 <h2>Plot of the dataset</h2>
 
 <img data-src="presentation_files/figure-revealjs/EDA-1.png" width="960" class="r-stretch"></section>
-<section id="b-splines" class="slide level2">
-<h2>B-splines</h2>
+<section id="linear-model" class="slide level2">
+<h2>Linear model</h2>
+<h3 id="definition">Definition</h3>
+<p>A linear model refers to any model which assumes linearity in the system.</p>
+<h3 id="population-model">Population model</h3>
+<p><span class="math display">\[
+\mathbf{y} =
+\mathbf{X} \boldsymbol{\beta} + \mathbf{e}, \quad
+\text{where} \quad
+\mathbf{e} \sim \mathcal{N}(\mathbf{0}, \mathbf{I}_{n}\sigma^2)
+\]</span></p>
+<h3 id="fitted-model">Fitted model</h3>
+<p><span class="math display">\[\hat{\mathbf{y}} = \mathbf{X} \hat{\boldsymbol{\beta}}\]</span></p>
+</section>
+<section id="linear-model-plot" class="slide level2">
+<h2>Linear model plot</h2>
+
+<img data-src="presentation_files/figure-revealjs/Linear-Model-1.png" width="960" class="r-stretch"></section>
+<section id="discussion" class="slide level2">
+<h2>Discussion</h2>
+<h3 id="problem">Problem</h3>
+<p>Linear models are not flexible enough to capture the non-linearity of the data.</p>
+<h3 id="solution">Solution</h3>
+<p>Try using non-linear models such as polynomial regression or B-splines.</p>
+</section>
+<section id="b-spline" class="slide level2">
+<h2>B-spline</h2>
+<h3 id="definition-1">Definition</h3>
+<p>A B-spline is a piecewise polynomial of order n.</p>
 <h3 id="base-case">Base case</h3>
 <p><span class="math display">\[
 B_{i, 0}(t) :=
@@ -371,24 +398,19 @@ B_{i, 0}(t) :=
 B_{i,p}(t) :=
 \frac{t - t_{i}}{t_{i+p} - t_{i}} B_{i, p-1}(t)
 + \frac{t_{i+p+1}-t}{t_{i+p+1}-t_{i+1}} B_{i+1, p-1}(t)
-\]</span></p>
-<h4 id="where">Where</h4>
-<p><span class="math inline">\(t\)</span> is the covariate and <span class="math inline">\(p\)</span> is the degree of the polynomial.</p>
-</section>
-<section id="spline-animation" class="slide level2">
-<h2>Spline Animation</h2>
+\]</span> <span class="math display">\[\text{where,} \; t \; \text{is the covariate and} \; p \; \text{is the degree of the polynomial.}\]</span></p>
 
-<img data-src="spline_animation.gif" class="r-stretch"></section>
-<section id="discussion" class="slide level2">
+<img data-src="presentation_files/figure-revealjs/Spline-model-1.png" width="960" class="r-stretch"></section>
+<section id="discussion-1" class="slide level2">
 <h2>Discussion</h2>
-<h3 id="problem">Problem</h3>
+<h3 id="problem-1">Problem</h3>
 <p>Splines do not consider the correlations between data points. They model the immediate shape of the data.</p>
-<h3 id="solution">Solution</h3>
+<h3 id="solution-1">Solution</h3>
 <p>Use Gaussian processes to model the data generating process. GPs consider all the observations and their correlations.</p>
 </section>
 <section id="gaussian-process" class="slide level2">
 <h2>Gaussian process</h2>
-<h3 id="definition">Definition</h3>
+<h3 id="definition-2">Definition</h3>
 <p>A time continuous stochastic process <span class="math inline">\(\{X_{t}; \ t \in T\}\)</span> is Gaussian if and only if for every finite set of indices <span class="math inline">\(t_{1},...,t_{k}\)</span> in the index set <span class="math inline">\(T\)</span> <span class="math display">\[\mathbf{X}_{t_{1},...,t_{k}} = (X_{t_{1}},...,X_{t_{k}})\]</span> is a multivariate Gaussian random variable.</p>
 <h3 id="meaning">Meaning</h3>
 <p><span class="math display">\[f \sim GP(m, k) \rightarrow f_{n} \sim MVN(\mathbf{m}, \mathbf{K})\]</span> <span class="math display">\[\pi(y_{n};f(x_{n}),\phi) \rightarrow \pi(y_{n}; f_{n}, \phi)\]</span></p>
@@ -423,10 +445,12 @@ k(x_{N_{\text{pred}}}^{\text{pred}}, x_{1}^{\text{obs}}) &amp; \cdots &amp; k(x_
 </section>
 <section id="prior-realizations" class="slide level2">
 <h2>Prior realizations</h2>
-</section>
+
+<img data-src="presentation_files/figure-revealjs/PR-1.png" width="960" class="r-stretch"></section>
 <section id="prior-quantiles" class="slide level2">
 <h2>Prior quantiles</h2>
-<div class="quarto-auto-generated-content">
+
+<img data-src="presentation_files/figure-revealjs/PQ-1.png" width="960" class="r-stretch"><div class="quarto-auto-generated-content">
 <div class="footer footer-default">
 
 </div>
