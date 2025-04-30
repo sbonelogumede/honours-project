@@ -7,12 +7,27 @@ institute:
   - 'University of Cape Town'
   - 'Supervisor: Dr. Birgit Erni'
 date: today
-format: beamer
+format: 
+  beamer:
+    pdfengine: pdflatex
+    include-in-header: 
+      text: |
+        \makeatletter
+        \@fleqntrue
+        \makeatother
+        \usepackage{etex}
+        \usepackage{tabularx}
+        \usepackage{hyperref}
+        \usepackage{graphicx}
+        \maxdeadcycles=1000
+        \extrarowheight=5pt
+        \maxdimen=16383.99999pt
 ---
 
 ```{r Setup}
 #| echo: FALSE
 #| include: FALSE
+#| warning: FALSE
 
 packs = c('dplyr', 'forecast', 'fpp2', 'ggfortify', 'ggplot2', 'knitr', 
 			 'splines', 'rstan')
@@ -29,6 +44,7 @@ for(pack in packs){
 
 ```{r EDA}
 #| echo: FALSE
+#| warning: FALSE
 
 df <- EuStockMarkets[, 'FTSE'] # Load data
 
@@ -43,10 +59,11 @@ autoplot(df) +
 
 ```{r CMA}
 #| echo: FALSE
+#| warning: FALSE
 
 autoplot(df) +
-	autolayer(ma(df,365), series='MA 365', size=1.5) +
-	scale_color_manual(values=c('MA 365' = 'firebrick')) +
+	autolayer(ma(df,30), series='MA 30', size=1.5) +
+	scale_color_manual(values=c('MA 30' = 'firebrick')) +
 	labs(title='Daily Closing Prices of FTSE (1991-1998)',
 		  x='Time',
 		  y='FTSE',
@@ -56,35 +73,15 @@ autoplot(df) +
 			legend.title = element_text(size = 16))
 ```
 
-## Discussion
-
-There are infinite models that we could use. However, since we picked up the trend 
-using CMA(k=365) we can make an inspired guess. 
-A second degree polynomial spline seems to be appropriate.
-
-## Partition
-
 ```{r Partition}
 #| echo: FALSE
+#| warning: FALSE
 
 n <- length(df) # Number of observations in the data
 train_end_index <- floor(0.7 * n) # (70/30)% split of the data
 
 train <- window(df, end = time(df)[train_end_index]) # Training data
 test <- window(df, start = time(df)[train_end_index + 1]) # Testing data
-
-# Plot the train vs test set
-autoplot(df) +
-	autolayer(train, series='Train', size=1.5) +
-	autolayer(test, series='Test', size=1.5) +
-	scale_color_manual(values=c('Train'='lightskyblue', 'Test'='darkorange')) +
-	labs(title='Daily Closing Prices of FTSE (1991-1998)',
-		  x='Time',
-		  y='FTSE',
-		  color='Legend') + 
-	theme_minimal() +
-	theme(legend.text = element_text(size = 14), 
-			legend.title = element_text(size = 16))
 ```
 
 ## B-splines
@@ -111,62 +108,109 @@ $$
 
 $t$ is the covariate and $p$ is the degree of the polynomial.
 
+```{r Decompose}
+#| echo: FALSE
+#| eval: FALSE
+
+decomp_model <- decompose(train, type='multiplicative') # Decompose the training data
+trend <- na.omit(decomp_model) # Remove missing values
+n_old <- length(decomp$trend)
+n_new <- length(trend)
+time <- 131 : (n_new - 130) # First and last 130 observations are NA
+linear <- lm(trend ~ time)
+```
+
 ## B-spline of order 2 fit
 
 ```{r Spline}
 #| echo: FALSE
+#| warning: FALSE
 
 train_time <- as.numeric(time(train)) # Extract the time component for training data
 test_time <- as.numeric(time(test)) # Extract the time component for testing data
-
-fit <- lm(train ~ bs(train_time, df = 2)) # Fit a spline model of degree 2
-
-train_preds <- predict(fit, newdata=data.frame(train_time=train_time)) # Spline on training data
-test_preds <- predict(fit, newdata=data.frame(train_time=test_time)) # Extrapolate
-
-train_ts <- ts(train_preds, start=start(train), frequency=frequency(train)) # Convert to ts
-test_ts <- ts(test_preds, start=start(test), frequency=frequency(test)) # Convert to ts
-
-autoplot(df) +
-	autolayer(train_ts, series='Train Spline', size=1.5) +
-	autolayer(test_ts, series='Test Spline', size=1.5) +
-	scale_color_manual(values=c('Train Spline'='lightskyblue', 
-										 'Test Spline'='darkorange')) +
-	labs(title='Daily Closing Prices of FTSE (1991-1998)',
-		  x='Time',
-		  y='FTSE',
-		  color='Legend') + 
-	theme_minimal() +
-	theme(legend.text = element_text(size = 14), 
-			legend.title = element_text(size = 16))
+for(dof in 3:11){
+	Sys.sleep(3)
+	
+	spline_model <- lm(train ~ bs(train_time, df=dof)) # Fit a spline model of degree 2
+	train_preds <- predict(spline_model, newdata=data.frame(train_time=train_time)) # Spline on training data
+	test_preds <- predict(spline_model, newdata=data.frame(train_time=test_time)) # Extrapolate
+	train_ts <- ts(train_preds, start=start(train), frequency=frequency(train)) # Convert to ts
+	test_ts <- ts(test_preds, start=start(test), frequency=frequency(test))
+	
+	p <- autoplot(df) +
+		autolayer(train_ts, series='Train Spline', size=1.5) +
+		autolayer(test_ts, series='Test Spline', size=1.5) +
+		scale_color_manual(values=c('Train Spline'='lightskyblue', 
+											 'Test Spline'='darkorange')) +
+		labs(title='Daily Closing Prices of FTSE (1991-1998)',
+			  x='Time',
+			  y='FTSE',
+			  color='Legend') + 
+		theme_minimal() +
+		theme(legend.text = element_text(size = 14), 
+				legend.title = element_text(size = 16))
+	print(p)
+	}
 ```
 
 ## Discussion
 
 ### Problem
 
-Robust use of the polynomial model requires knowledge of how the coefficients 
-interact to control functional behaviour, 
-which becomes unmanageable as the order of the polynomial grows.
+Splines do not consider the correlations between data points. 
+They model the immediate shape of the data.
 
 ### Solution
 
-A Gaussian Process defines a probability distribution over functions; in other words, 
-it is an entire function from the covariate space to the real-valued output space.
+Use Gaussian processes to model the data generating process. 
+GPs consider all the observations and their correlations.
 
 ## Gaussian process
-
+### Definition
+\begin{flushleft}
 A time continuous stochastic process $\{X_{t}; \ t \in T\}$ is Gaussian 
-if and only if for every finite set of indices $t_{1},...,t_{k}$ in the index set $T$
-
-$$\mathbf{X}_{t_{1},...,t_{k}} = (X_{t_{1}},...,X_{t_{k}})$$ 
-
+if and only if for every finite set of indices $t_{1},...,t_{k}$ in the index set $T$\\
+$\mathbf{X}_{t_{1},...,t_{k}} = (X_{t_{1}},...,X_{t_{k}})$\\
 is a multivariate Gaussian random variable.
+\end{flushleft}
+
+### Meaning
+\begin{flushleft}
+	$f \sim GP(m, k) \rightarrow f_{n} \sim MVN(\mathbf{m}, \mathbf{K})$\\
+	$\pi(y_{n};f(x_{n}),\phi) \rightarrow \pi(y_{n}; f_{n}, \phi)$
+\end{flushleft}
+
+## Parameters
+
+$$
+\mathbf{m} = \resizebox{0.14\textwidth}{!}{$
+\begin{bmatrix}
+\mu(x_{1}^{\text{obs}}) \\
+\vdots \\
+\mu(x_{N_{\text{obs}}}^{\text{obs}})  \\
+\mu(x_{1}^{\text{pred}})\\
+\vdots \\
+\mu(x_{N_{\text{pred}}}^{\text{pred}})
+\end{bmatrix}
+$}
+$$
+$$
+\mathbf{K} = \resizebox{0.9\textwidth}{!}{$
+\begin{bmatrix}
+k(x_{1}^{\text{obs}}, x_{1}^{\text{obs}}) & \cdots & k(x_{1}^{\text{obs}}, x_{N_{\text{obs}}}^{\text{obs}}) & \quad & k(x_{1}^{\text{obs}}, x_{1}^{\text{pred}}) & \cdots & k(x_{1}^{\text{obs}}, x_{N_{\text{pred}}}^{\text{pred}}) \\
+\vdots & \ddots & \vdots & & \vdots & \ddots & \vdots \\
+k(x_{N_{\text{obs}}}^{\text{obs}}, x_{1}^{\text{obs}}) & \cdots & k(x_{N_{\text{obs}}}^{\text{obs}}, x_{N_{\text{obs}}}^{\text{obs}}) & \quad & k(x_{N_{\text{obs}}}^{\text{obs}}, x_{1}^{\text{pred}}) & \cdots & k(x_{N_{\text{obs}}}^{\text{obs}}, x_{N_{\text{pred}}}^{\text{pred}}) \\
+k(x_{1}^{\text{pred}}, x_{1}^{\text{obs}}) & \cdots & k(x_{1}^{\text{pred}}, x_{N_{\text{obs}}}^{\text{obs}}) & \quad & k(x_{1}^{\text{pred}}, x_{1}^{\text{pred}}) & \cdots & k(x_{1}^{\text{pred}}, x_{N_{\text{pred}}}^{\text{pred}}) \\
+\vdots & \ddots & \vdots & & \vdots & \ddots & \vdots \\
+k(x_{N_{\text{pred}}}^{\text{pred}}, x_{1}^{\text{obs}}) & \cdots & k(x_{N_{\text{pred}}}^{\text{pred}}, x_{N_{\text{obs}}}^{\text{obs}}) & \quad & k(x_{N_{\text{pred}}}^{\text{pred}}, x_{1}^{\text{pred}}) & \cdots & k(x_{N_{\text{pred}}}^{\text{pred}}, x_{N_{\text{pred}}}^{\text{pred}})
+\end{bmatrix}
+$}
+$$
 
 ```{r GP}
 #| echo: FALSE
 #| warning: FALSE
-
+#| eval: FALSE
 rstan_options(auto_write=TRUE)
 options(mc.cores=parallel::detectCores())
 parallel:::setDefaultClusterOptions(setup_strategy='sequential')
@@ -203,7 +247,7 @@ source('gp_utility.R', local=util)
 ```{r PR}
 #| echo: FALSE
 #| warning: FALSE
-
+#| eval: FALSE
 util$plot_gp_prior_realizations(simu_fit, x, 'Prior realizations')
 ```
 
@@ -212,6 +256,6 @@ util$plot_gp_prior_realizations(simu_fit, x, 'Prior realizations')
 ```{r PQ}
 #| echo: FALSE
 #| warning: FALSE
-
+#| eval: FALSE
 util$plot_gp_prior_quantiles(simu_fit, x, 'Prior quantiles')
 ```
