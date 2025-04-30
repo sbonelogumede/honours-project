@@ -145,7 +145,23 @@ B_{i,p}(t) :=
 $$
 $$\text{where,} \; t \; \text{is the covariate and} \; p \; \text{is the degree of the polynomial.}$$
 
-```{r Spline-model}
+## B-spline model plot
+
+```{r B-spline}
+#| echo: FALSE
+#| eval: TRUE
+#| include: TRUE
+#| warning: FALSE
+
+p <- autoplot(df) +
+		labs(title='Daily Closing Prices of FTSE (1991-1998)',
+			  x='Time',
+			  y='FTSE',
+			  color='Legend') + 
+		theme_minimal() +
+		theme(legend.text = element_text(size = 14), 
+				legend.title = element_text(size = 16))
+
 color_values <- c()
 
 for(dof in 2:8){
