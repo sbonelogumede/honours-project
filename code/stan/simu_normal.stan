@@ -9,7 +9,7 @@ data {
 
 transformed data {
    matrix[N, N] cov = cov_exp_quad(x, alpha, rho) 
-                     + diag_matrix(rep_vector(1e-10, N));
+   + diag_matrix(rep_vector(1e-10, N));
    matrix[N, N] L_cov = cholesky_decompose(cov);
 }
 
@@ -20,3 +20,4 @@ generated quantities {
    vector[N] f = multi_normal_cholesky_rng(rep_vector(0, N), L_cov);
    real y[N] = normal_rng(f, sigma);
 }
+

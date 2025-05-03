@@ -15,14 +15,10 @@ format:
 ---
 
 ```{r Setup}
-#| echo: FALSE
-#| include: FALSE
-#| warning: FALSE
-
 options(repos=c(CRAN='https://cloud.r-project.org'))
 
-packs <- c('dplyr', 'forecast', 'fpp2', 'ggfortify', 'gifski', 'ggplot2', 'knitr', 
-			  'splines', 'rstan')
+packs <- c('cmdstanr', 'dplyr', 'forecast', 'fpp2', 'ggfortify', 'gifski', 
+			  'ggplot2', 'knitr', 'mvtnorm', 'splines', 'rstan')
 
 for(pack in packs){
 	if(!requireNamespace(pack, quietly=TRUE)){
@@ -32,14 +28,16 @@ for(pack in packs){
 }
 
 colors <- c('skyblue', 'seagreen', 'pink', 'cyan', 'gray', 'salmon', 'steelblue')
+
+# Stan setup
+rstan_options(auto_write=TRUE)
+options(mc.cores=parallel::detectCores())
+parallel:::setDefaultClusterOptions(setup_strategy='sequential')
 ```
 
 ## Plot of the dataset
 
 ```{r EDA}
-#| echo: FALSE
-#| warning: FALSE
-
 df <- EuStockMarkets[, 'FTSE'] # Load data
 
 autoplot(df) +
@@ -50,109 +48,118 @@ autoplot(df) +
 ```
 
 ```{r Partition}
-#| echo: FALSE
-#| warning: FALSE
-
 n <- length(df) # Number of observations in the data
 train_end_index <- floor(0.7 * n) # (70/30)% split of the data
 
 train <- window(df, end = time(df)[train_end_index]) # Training data
 test <- window(df, start = time(df)[train_end_index + 1]) # Testing data
+n_train <- length(train) # Number of observations on the training data
+n_test <- length(test)  # Number of observations on the testing data
 train_time <- as.numeric(time(train)) # Extract the time component for training data
 test_time <- as.numeric(time(test)) # Extract the time component for testing data
 ```
 
-## Linear model
+## Linear regression
 
-### Definition
+#### Definition
 
-A linear model refers to any model which assumes linearity in the system.
+Linear regression is a model that estimates the relationship between a scalar response (dependent variable) and one or more explanatory variables (independent variable).
 
-### Population model
+#### Form
 
 $$
-\mathbf{y} = 
-\mathbf{X} \boldsymbol{\beta} + \mathbf{e}, \quad 
-\text{where} \quad
-\mathbf{e} \sim \mathcal{N}(\mathbf{0}, \mathbf{I}_{n}\sigma^2)
+y_i = \beta_0 + \beta_1x_{i1} + \beta_2x_{i2}+ ... + \beta_mx_{ip} + \varepsilon_i \; (i= 1, 2, ..., n)\\
+where\\
+\varepsilon \sim \mathcal{N}(0, \sigma^2)
 $$
 
-### Fitted model
+## Linear regression plot
 
-$$\hat{\mathbf{y}} = \mathbf{X} \hat{\boldsymbol{\beta}}$$
+```{r Linear-regression}
+linear_regression <- lm(train ~ train_time)
+train_preds <- predict(linear_regression, newdata=data.frame(train_time=train_time)) # Spline on training data
+test_preds <- predict(linear_regression, newdata=data.frame(train_time=test_time)) # Extrapolate
+train_ts <- ts(train_preds, start=start(train), frequency=frequency(train)) # Convert to ts
+test_ts <- ts(test_preds, start=start(test), frequency=frequency(test))
 
-## Linear model plot
-
-```{r Linear-Model}
-#| echo: FALSE
-#| eval: TRUE
-#| include: TRUE
-#| warning: FALSE
-
-linear_model <- lm(train ~ train_time)
-	train_preds <- predict(linear_model, newdata=data.frame(train_time=train_time)) # Spline on training data
-	test_preds <- predict(linear_model, newdata=data.frame(train_time=test_time)) # Extrapolate
-	train_ts <- ts(train_preds, start=start(train), frequency=frequency(train)) # Convert to ts
-	test_ts <- ts(test_preds, start=start(test), frequency=frequency(test))
-	
-	p <- autoplot(df) +
-		autolayer(train_ts, series='Train Linear Model', size=1.5) +
-		autolayer(test_ts, series='Test Linear Model', size=1.5) +
-		scale_color_manual(values=c('Train Linear Model'='lightskyblue', 
-											 'Test Linear Model'='darkorange')) +
-		labs(title='Daily Closing Prices of FTSE (1991-1998)',
-			  x='Time',
-			  y='FTSE',
-			  color='Legend') + 
-		theme_minimal() +
-		theme(legend.text = element_text(size = 14), 
-				legend.title = element_text(size = 16))
-	print(p)
+autoplot(df) +
+	autolayer(train_ts, series='Train Linear Model', size=1.5) +
+	autolayer(test_ts, series='Test Linear Model', size=1.5) +
+	scale_color_manual(values=c('Train Linear Model'='lightskyblue', 
+										 'Test Linear Model'='darkorange')) +
+	labs(title='Daily Closing Prices of FTSE (1991-1998)',
+		  x='Time',
+		  y='FTSE',
+		  color='Legend') + 
+	theme_minimal() +
+	theme(legend.text = element_text(size = 14), 
+			legend.title = element_text(size = 16))
 ```
 
-## Discussion
+## Polynomial regression
 
-### Problem
+#### Definition
 
-Linear models are not flexible enough to capture the non-linearity of the data.
+Polynomial regression is a form of regression analysis in which the relationship between the independent variable x and the dependent variable y is modeled as a polynomial in x.
 
-### Solution
+#### Form
 
-Try using non-linear models such as polynomial regression or B-splines.
+$$
+y_i = \beta_0 + \beta_1x_{i} + \beta_2x_{i}^{2} + ... + \beta_mx_{i}^{m} + \varepsilon_i \; (i= 1, 2, ..., n)\\
+where\\
+\varepsilon \sim \mathcal{N}(0, \sigma^2)
+$$
+
+## Polynomial regression plot
+
+```{r Polynomial-regression}
+polynomial_regression <- lm(train ~ train_time + I(train_time^2) + I(train_time^3))
+train_preds <- predict(polynomial_regression, newdata=data.frame(train_time=train_time)) # Spline on training data
+test_preds <- predict(polynomial_regression, newdata=data.frame(train_time=test_time)) # Extrapolate
+train_ts <- ts(train_preds, start=start(train), frequency=frequency(train)) # Convert to ts
+test_ts <- ts(test_preds, start=start(test), frequency=frequency(test))
+
+autoplot(df) +
+	autolayer(train_ts, series='Train Linear Model', size=1.5) +
+	autolayer(test_ts, series='Test Linear Model', size=1.5) +
+	scale_color_manual(values=c('Train Linear Model'='lightskyblue', 
+										 'Test Linear Model'='darkorange')) +
+	labs(title='Daily Closing Prices of FTSE (1991-1998)',
+		  x='Time',
+		  y='FTSE',
+		  color='Legend') + 
+	theme_minimal() +
+	theme(legend.text = element_text(size = 14), 
+			legend.title = element_text(size = 16))
+```
 
 ## B-spline
 
-### Definition
+#### Definition
 
 A B-spline is a piecewise polynomial of order n.
 
-### Base case
+#### Base case
 
 $$
 B_{i, 0}(t) := 
 \begin{cases} 
-	1, & \text{if } t_{i} \leq t < t_{i+1} \\
-	0, & \text{otherwise}
+    1, & \text{if } t_{i} \leq t < t_{i+1} \\
+    0, & \text{otherwise}
 \end{cases}
 $$
 
-### Recursive step
+#### Recursive step
 
 $$
 B_{i,p}(t) := 
 \frac{t - t_{i}}{t_{i+p} - t_{i}} B_{i, p-1}(t) 
 + \frac{t_{i+p+1}-t}{t_{i+p+1}-t_{i+1}} B_{i+1, p-1}(t)
-$$
-$$\text{where,} \; t \; \text{is the covariate and} \; p \; \text{is the degree of the polynomial.}$$
+$$ $$\text{where,} \; t \; \text{is the covariate and} \; p \; \text{is the degree of the polynomial.}$$
 
 ## B-spline model plot
 
 ```{r B-spline}
-#| echo: FALSE
-#| eval: TRUE
-#| include: TRUE
-#| warning: FALSE
-
 p <- autoplot(df) +
 		labs(title='Daily Closing Prices of FTSE (1991-1998)',
 			  x='Time',
@@ -198,33 +205,17 @@ p <- p + scale_color_manual(values=color_values)
 print(p)
 ```
 
-## Discussion
-
-### Problem
-
-Splines do not consider the correlations between data points. 
-They model the immediate shape of the data.
-
-### Solution
-
-Use Gaussian processes to model the data generating process. 
-GPs consider all the observations and their correlations.
-
 ## Gaussian process
 
-### Definition
+#### Definition
 
-A time continuous stochastic process $\{X_{t}; \ t \in T\}$ is Gaussian 
-if and only if for every finite set of indices $t_{1},...,t_{k}$ in the index set $T$
-$$\mathbf{X}_{t_{1},...,t_{k}} = (X_{t_{1}},...,X_{t_{k}})$$
-is a multivariate Gaussian random variable.
+A time continuous stochastic process $\{X_{t}; \ t \in T\}$ is Gaussian if and only if for every finite set of indices $t_{1},...,t_{k}$ in the index set $T$ $$\mathbf{X}_{t_{1},...,t_{k}} = (X_{t_{1}},...,X_{t_{k}})$$ is a multivariate Gaussian random variable.
 
-### Meaning
+#### Meaning
 
-$$f \sim GP(m, k) \rightarrow f_{n} \sim MVN(\mathbf{m}, \mathbf{K})$$
-$$\pi(y_{n};f(x_{n}),\phi) \rightarrow \pi(y_{n}; f_{n}, \phi)$$
+$$f \sim GP(m, k) \rightarrow f_{n} \sim MVN(\mathbf{m}, \mathbf{K})$$ $$\pi(y_{n};f(x_{n}),\phi) \rightarrow \pi(y_{n}; f_{n}, \phi)$$
 
-## Mean Vector
+## Mean vector
 
 $$
 \mathbf{m} =
@@ -238,7 +229,7 @@ $$
 \end{bmatrix}
 $$
 
-## Covariance-Matrix
+## Covariance matrix
 
 $$
 \mathbf{K} = 
@@ -252,71 +243,157 @@ k(x_{N_{\text{pred}}}^{\text{pred}}, x_{1}^{\text{obs}}) & \cdots & k(x_{N_{\tex
 \end{bmatrix}
 $$
 
-```{r GP}
-#| echo: FALSE
-#| eval: TRUE
-#| include: FALSE
-#| warning: FALSE
+## Covariance function
 
-rstan_options(auto_write=TRUE)
-options(mc.cores=parallel::detectCores())
-parallel:::setDefaultClusterOptions(setup_strategy='sequential')
+#### Squared exponential
 
-util <- new.env()
+$$
+k(x_{i}, x_{j}) = h^{2} exp[-(\frac{x_{i} - x_{j}}{\lambda})^{2}]
+$$
 
-par(family='serif', las=1, bty='l', cex.axis=1, cex.lab=1,
-	 cex.main=1, xaxs='i', yaxs='i', mar=c(5, 5, 3, 5))
+## Gaussian process plot
 
-# Gram grid
-x <- 22 * (0:(n-1)) / (n-1) - 11
+```{r Gaussian-process}
+set.seed(1)
 
-# Parameters that specify our GP
-alpha_true <- 3
-rho_true <- 5.5
-sigma_true <- 2
+x <- train_time
+d <- abs(outer(x, x, '-')) # Compute distance matrix d_{ij} = |x_i - x_j|
 
-# Pack everything together
-simu_data <- list(alpha=alpha_true, rho=rho_true, sigma=sigma_true, 
-						N=n, x=x)
+mx <- x^2 / 4
+Sigma_SE <- exp(-d^2 / 2) # Squared exponential kernel
 
-# Sample from the MVN(0, Gram-matrix)
-simu_fit <- stan(file='stan_programs/presentation.stan', 
-					  data=simu_data, warmup=0, iter=4000, chains=1, 
-					  seed=494838, algorithm='Fixed_param', refresh=0, 
-					  verbose=FALSE)
+y <- mvtnorm::rmvnorm(1, mean=mx, sigma=Sigma_SE)
 
-# Visualization code
-source('gp_utility.R', local=util)
+plot(
+	x, 
+	y, 
+	ylim=c(-10, 10),
+	xlab='Time',
+	lwd=2,
+	col=1
+)
 
-# Save util and simu_fit for later
-# saveRDS(util, file='../objects/util_env.rds')
-# saveRDS(simu_fit, file='../objects/simu_fit.rds')
-# saveRDS(x, file='../objects/x.rds')
+for (i in 1:5) {
+	y = mvtnorm::rmvnorm(1, sigma=Sigma_SE)
+	lines(x, y, col=i+1, lwd=2)
+}
 ```
 
-## Prior realizations
+```{r Birgit-posterior}
+#| eval: FALSE
 
-```{r PR}
-#| echo: FALSE
-#| eval: TRUE
-#| include: TRUE
-#| warning: FALSE
+df <- EuStockMarkets[, 'FTSE'] # Load data
+n <- length(df) # Number of observations in the data
+train_end_index <- floor(0.7 * n) # (70/30)% split of the data
 
-# util <- readRDS('../objects/util_env.rds')
-# simu_fit <- readRDS('../objects/simu_fit.rds')
-# x <- readRDS('../objects/x.rds')
-# source('gp_utility.R', local=util)
+train <- window(df, end = time(df)[train_end_index]) # Training data
+test <- window(df, start = time(df)[train_end_index + 1]) # Testing data
+train_time <- as.numeric(time(train)) # Extract the time component for training data
+test_time <- as.numeric(time(test)) # Extract the time component for testing data
 
-util$plot_gp_prior_realizations(simu_fit, x, 'Prior realizations')
+data_list <- list(
+	y_obs=train, 
+	x_obs=train_time, 
+	N_obs=length(train_time), 
+	x2=test_time, 
+	N2=length(test_time)
+	)
+
+m1 <- cmdstan_model(stan_file='stan/presentaion.stan')
+
+m1.fit <- m1$sample(
+	data=data_list, 
+	seed=123, 
+	chains=4, 
+	parallel_chains=2
+	)
+
+train_preds <- ?
+test_preds <- ?
+
+train_ts <- ts(train_preds, start=start(train), frequency=frequency(train))
+test_ts <- ts(test_preds, start=start(test), frequency=frequency(test))
+
+autoplot(df) +
+	autolayer(train_ts, series='Train', size=1.5) +
+	autolayer(test_ts, series='Test', size=1.5)
 ```
 
-## Prior quantiles
+```{r Prior-model}
+#| eval: FALSE
+# Gaussian process parameters
+alpha_true <- 15
+rho_true <- 5
+sigma_true <- 4
 
-```{r PQ}
-#| echo: FALSE
-#| eval: TRUE
-#| include: TRUE
-#| warning: FALSE
+# Stan parameters
+prior_data <- list(
+	alpha = alpha_true, 
+	rho = rho_true, 
+	sigma = sigma_true, 
+	N = n_train, 
+	x = train_time 
+)
 
-util$plot_gp_prior_quantiles(simu_fit, x, 'Prior quantiles')
+# Train prior model
+prior_model <- stan(
+	file = 'stan_programs/presentation.stan', 
+	data = prior_data, 
+	warmup = 0, 
+	iter = 4000, 
+	chains = 1, 
+	seed = 494838, 
+	algorithm = 'Fixed_param', 
+	refresh = 0, 
+	verbose = FALSE
+)
+```
+
+```{r Pior-realizations}
+#| eval: FALSE
+set.seed(1)
+prior_samples <- (extract(prior_model)$f)[1:10, ]
+p <- ggplot() + 
+	geom_line(aes(x=train_time, y=as.numeric(train)), 
+				 color='black')
+
+for(i in 1:10){
+	p <- p + 
+				geom_line(aes(x=train_time, y=prior_samples[i, ]), 
+							 color=scales::hue_pal()(10)[i], linewidth=2)
+}
+
+p + 
+	labs(title='Prior realizations', x='Time', y='f')  +
+	theme_minimal()
+```
+
+```{r Posterior-model}
+#| eval: FALSE
+# Concatenate
+x_predict <- c(train_time, test_time) 
+N_predict <- length(x_predict) 
+observed_idx <- 1:n_train 
+
+# Stan parameters
+data <- list(
+	N_obs = n_train, 
+	y_obs = as.numeric(train), 
+	observed_idx = observed_idx, 
+	N_predict = N_predict, 
+	x_predict = x_predict, 
+	alpha = alpha_true, 
+	rho = rho_true, 
+	sigma = sigma_true 
+)
+
+# Train posterior model
+normal_fit <- stan(
+	file = 'stan_programs/fit_normal.stan', 
+	data = data, 
+	warmup = 500, 
+	iter = 4000, 
+	chains = 8, 
+	seed = 494838 
+)
 ```

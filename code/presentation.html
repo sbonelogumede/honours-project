@@ -12,7 +12,7 @@
 
   <meta name="author" content="Azar Raphaela">
   <meta name="author" content="Gumede Sbonelo">
-  <meta name="dcterms.date" content="2025-04-30">
+  <meta name="dcterms.date" content="2025-05-03">
   <title>Gaussian Processes for Time Series Modelling</title>
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -350,42 +350,47 @@ Gumede Sbonelo
     </div>
 </div>
 
-  <p class="date">2025-04-30</p>
+  <p class="date">2025-05-03</p>
 </section>
 <section id="plot-of-the-dataset" class="slide level2">
 <h2>Plot of the dataset</h2>
 
 <img data-src="presentation_files/figure-revealjs/EDA-1.png" width="960" class="r-stretch"></section>
-<section id="linear-model" class="slide level2">
-<h2>Linear model</h2>
-<h3 id="definition">Definition</h3>
-<p>A linear model refers to any model which assumes linearity in the system.</p>
-<h3 id="population-model">Population model</h3>
+<section id="linear-regression" class="slide level2">
+<h2>Linear regression</h2>
+<h4 id="definition">Definition</h4>
+<p>Linear regression is a model that estimates the relationship between a scalar response (dependent variable) and one or more explanatory variables (independent variable).</p>
+<h4 id="form">Form</h4>
 <p><span class="math display">\[
-\mathbf{y} =
-\mathbf{X} \boldsymbol{\beta} + \mathbf{e}, \quad
-\text{where} \quad
-\mathbf{e} \sim \mathcal{N}(\mathbf{0}, \mathbf{I}_{n}\sigma^2)
+y_i = \beta_0 + \beta_1x_{i1} + \beta_2x_{i2}+ ... + \beta_mx_{ip} + \varepsilon_i \; (i= 1, 2, ..., n)\\
+where\\
+\varepsilon \sim \mathcal{N}(0, \sigma^2)
 \]</span></p>
-<h3 id="fitted-model">Fitted model</h3>
-<p><span class="math display">\[\hat{\mathbf{y}} = \mathbf{X} \hat{\boldsymbol{\beta}}\]</span></p>
 </section>
-<section id="linear-model-plot" class="slide level2">
-<h2>Linear model plot</h2>
+<section id="linear-regression-plot" class="slide level2">
+<h2>Linear regression plot</h2>
 
-<img data-src="presentation_files/figure-revealjs/Linear-Model-1.png" width="960" class="r-stretch"></section>
-<section id="discussion" class="slide level2">
-<h2>Discussion</h2>
-<h3 id="problem">Problem</h3>
-<p>Linear models are not flexible enough to capture the non-linearity of the data.</p>
-<h3 id="solution">Solution</h3>
-<p>Try using non-linear models such as polynomial regression or B-splines.</p>
+<img data-src="presentation_files/figure-revealjs/Linear-regression-1.png" width="960" class="r-stretch"></section>
+<section id="polynomial-regression" class="slide level2">
+<h2>Polynomial regression</h2>
+<h4 id="definition-1">Definition</h4>
+<p>Polynomial regression is a form of regression analysis in which the relationship between the independent variable x and the dependent variable y is modeled as a polynomial in x.</p>
+<h4 id="form-1">Form</h4>
+<p><span class="math display">\[
+y_i = \beta_0 + \beta_1x_{i} + \beta_2x_{i}^{2} + ... + \beta_mx_{i}^{m} + \varepsilon_i \; (i= 1, 2, ..., n)\\
+where\\
+\varepsilon \sim \mathcal{N}(0, \sigma^2)
+\]</span></p>
 </section>
+<section id="polynomial-regression-plot" class="slide level2">
+<h2>Polynomial regression plot</h2>
+
+<img data-src="presentation_files/figure-revealjs/Polynomial-regression-1.png" width="960" class="r-stretch"></section>
 <section id="b-spline" class="slide level2">
 <h2>B-spline</h2>
-<h3 id="definition-1">Definition</h3>
+<h4 id="definition-2">Definition</h4>
 <p>A B-spline is a piecewise polynomial of order n.</p>
-<h3 id="base-case">Base case</h3>
+<h4 id="base-case">Base case</h4>
 <p><span class="math display">\[
 B_{i, 0}(t) :=
 \begin{cases}
@@ -393,7 +398,7 @@ B_{i, 0}(t) :=
     0, &amp; \text{otherwise}
 \end{cases}
 \]</span></p>
-<h3 id="recursive-step">Recursive step</h3>
+<h4 id="recursive-step">Recursive step</h4>
 <p><span class="math display">\[
 B_{i,p}(t) :=
 \frac{t - t_{i}}{t_{i+p} - t_{i}} B_{i, p-1}(t)
@@ -404,22 +409,15 @@ B_{i,p}(t) :=
 <h2>B-spline model plot</h2>
 
 <img data-src="presentation_files/figure-revealjs/B-spline-1.png" width="960" class="r-stretch"></section>
-<section id="discussion-1" class="slide level2">
-<h2>Discussion</h2>
-<h3 id="problem-1">Problem</h3>
-<p>Splines do not consider the correlations between data points. They model the immediate shape of the data.</p>
-<h3 id="solution-1">Solution</h3>
-<p>Use Gaussian processes to model the data generating process. GPs consider all the observations and their correlations.</p>
-</section>
 <section id="gaussian-process" class="slide level2">
 <h2>Gaussian process</h2>
-<h3 id="definition-2">Definition</h3>
+<h4 id="definition-3">Definition</h4>
 <p>A time continuous stochastic process <span class="math inline">\(\{X_{t}; \ t \in T\}\)</span> is Gaussian if and only if for every finite set of indices <span class="math inline">\(t_{1},...,t_{k}\)</span> in the index set <span class="math inline">\(T\)</span> <span class="math display">\[\mathbf{X}_{t_{1},...,t_{k}} = (X_{t_{1}},...,X_{t_{k}})\]</span> is a multivariate Gaussian random variable.</p>
-<h3 id="meaning">Meaning</h3>
+<h4 id="meaning">Meaning</h4>
 <p><span class="math display">\[f \sim GP(m, k) \rightarrow f_{n} \sim MVN(\mathbf{m}, \mathbf{K})\]</span> <span class="math display">\[\pi(y_{n};f(x_{n}),\phi) \rightarrow \pi(y_{n}; f_{n}, \phi)\]</span></p>
 </section>
 <section id="mean-vector" class="slide level2">
-<h2>Mean Vector</h2>
+<h2>Mean vector</h2>
 <p><span class="math display">\[
 \mathbf{m} =
 \begin{bmatrix}
@@ -433,7 +431,7 @@ B_{i,p}(t) :=
 \]</span></p>
 </section>
 <section id="covariance-matrix" class="slide level2">
-<h2>Covariance-Matrix</h2>
+<h2>Covariance matrix</h2>
 <p><span class="math display">\[
 \mathbf{K} =
 \begin{bmatrix}
@@ -446,14 +444,17 @@ k(x_{N_{\text{pred}}}^{\text{pred}}, x_{1}^{\text{obs}}) &amp; \cdots &amp; k(x_
 \end{bmatrix}
 \]</span></p>
 </section>
-<section id="prior-realizations" class="slide level2">
-<h2>Prior realizations</h2>
+<section id="covariance-function" class="slide level2">
+<h2>Covariance function</h2>
+<h4 id="squared-exponential">Squared exponential</h4>
+<p><span class="math display">\[
+k(x_{i}, x_{j}) = h^{2} exp[-(\frac{x_{i} - x_{j}}{\lambda})^{2}]
+\]</span></p>
+</section>
+<section id="gaussian-process-plot" class="slide level2">
+<h2>Gaussian process plot</h2>
 
-<img data-src="presentation_files/figure-revealjs/PR-1.png" width="960" class="r-stretch"></section>
-<section id="prior-quantiles" class="slide level2">
-<h2>Prior quantiles</h2>
-
-<img data-src="presentation_files/figure-revealjs/PQ-1.png" width="960" class="r-stretch"><div class="quarto-auto-generated-content">
+<img data-src="presentation_files/figure-revealjs/Gaussian-process-1.png" width="960" class="r-stretch"><div class="quarto-auto-generated-content">
 <div class="footer footer-default">
 
 </div>
