@@ -402,11 +402,13 @@ B_{i, 0}(t) :=
 <p><span class="math display">\[
 B_{i,p}(t) :=
 \frac{t - t_{i}}{t_{i+p} - t_{i}} B_{i, p-1}(t)
-+ \frac{t_{i+p+1}-t}{t_{i+p+1}-t_{i+1}} B_{i+1, p-1}(t)
-\]</span> <span class="math display">\[\text{where,} \; t \; \text{is the covariate and} \; p \; \text{is the degree of the polynomial.}\]</span></p>
++ \frac{t_{i+p+1}-t}{t_{i+p+1}-t_{i+1}} B_{i+1, p-1}(t)\\
+where\\
+t \; \text{is the covariate and} \; p \; \text{is the degree of the polynomial.}
+\]</span></p>
 </section>
-<section id="b-spline-model-plot" class="slide level2">
-<h2>B-spline model plot</h2>
+<section id="b-spline-plot" class="slide level2">
+<h2>B-spline plot</h2>
 
 <img data-src="presentation_files/figure-revealjs/B-spline-1.png" width="960" class="r-stretch"></section>
 <section id="gaussian-process" class="slide level2">
@@ -451,10 +453,18 @@ k(x_{N_{\text{pred}}}^{\text{pred}}, x_{1}^{\text{obs}}) &amp; \cdots &amp; k(x_
 k(x_{i}, x_{j}) = h^{2} exp[-(\frac{x_{i} - x_{j}}{\lambda})^{2}]
 \]</span></p>
 </section>
+<section id="gaussian-process-as-a-multivariate-normal-distribution" class="slide level2">
+<h2>Gaussian process as a Multivariate Normal distribution</h2>
+
+<img data-src="mvn.png" class="r-stretch quarto-figure-center"><p class="caption">
+Figure&nbsp;1: Gaussian process as a Multivariate Normal distribution
+</p></section>
 <section id="gaussian-process-plot" class="slide level2">
 <h2>Gaussian process plot</h2>
 
-<img data-src="presentation_files/figure-revealjs/Gaussian-process-1.png" width="960" class="r-stretch"><div class="quarto-auto-generated-content">
+<img data-src="density.png" class="r-stretch quarto-figure-center"><p class="caption">
+Figure&nbsp;2: Gaussian process plot
+</p><div class="quarto-auto-generated-content">
 <div class="footer footer-default">
 
 </div>

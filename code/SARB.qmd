@@ -1,0 +1,73 @@
+---
+title: "SARB Gold"
+author:
+  - Raphaela Azah
+  - Sbonelo Gumede
+format: html
+---
+
+```{r Setup}
+#| echo: FALSE
+#| message: FALSE
+#| include: FALSE
+#| warning: FALSE
+
+required <- c('dplyr', 'forecast', 'fpp3', 'ggplot2', 'tidyverse', 'knitr')
+lapply(required, require, character.only=TRUE)
+```
+
+
+```{r EDA}
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
+
+monthly_data <- read.csv(file='../data/KBP1021M.csv')
+
+kable(head(monthly_data))
+
+hist(
+	monthly_data$Value, 
+	col='steelblue', 
+	main='Histogram of gold prices in South Africa (1964 Jan - Dec 2024)',
+	xlab='Value'
+)
+
+monthly_data_ts <- ts(
+	monthly_data$Value, 
+	start=c(1964, 1), 
+	end=c(2024, 12), 
+	frequency=12)
+
+autoplot(monthly_data_ts) +
+	labs(
+		title='Histogram of gold prices in South Africa (1964 Jan - 2024 Nov)', 
+		x='Time', 
+		y='Gold price') +
+	theme_minimal()
+
+yearly_data <- read.csv(file='../data/KBP1021J.csv')
+
+kable(head(yearly_data))
+
+hist(
+	yearly_data$Value,
+	col='hotpink', 
+	main='Histogram of yearly gold prices in South Africa (1964 - 2024)',
+	xlab='Value'
+)
+
+yearly_data_ts <- ts(
+	yearly_data$Value, 
+	start=c(1964, 1), 
+	end=c(2024, 1), 
+	frequency=1
+	)
+
+autoplot(yearly_data_ts) + 
+	labs(
+		title='Yearly gold prices in South Africa (1964 - 2024)', 
+		x='Time', 
+		y='Gold price') +
+	theme_minimal()
+```

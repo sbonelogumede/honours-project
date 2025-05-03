@@ -113,7 +113,7 @@ $$
 ## Polynomial regression plot
 
 ```{r Polynomial-regression}
-polynomial_regression <- lm(train ~ train_time + I(train_time^2) + I(train_time^3))
+polynomial_regression <- lm(train ~ train_time + I(train_time^2) + I(train_time^3) + I(train_time^4))
 train_preds <- predict(polynomial_regression, newdata=data.frame(train_time=train_time)) # Spline on training data
 test_preds <- predict(polynomial_regression, newdata=data.frame(train_time=test_time)) # Extrapolate
 train_ts <- ts(train_preds, start=start(train), frequency=frequency(train)) # Convert to ts
@@ -154,10 +154,12 @@ $$
 $$
 B_{i,p}(t) := 
 \frac{t - t_{i}}{t_{i+p} - t_{i}} B_{i, p-1}(t) 
-+ \frac{t_{i+p+1}-t}{t_{i+p+1}-t_{i+1}} B_{i+1, p-1}(t)
-$$ $$\text{where,} \; t \; \text{is the covariate and} \; p \; \text{is the degree of the polynomial.}$$
++ \frac{t_{i+p+1}-t}{t_{i+p+1}-t_{i+1}} B_{i+1, p-1}(t)\\
+where\\
+t \; \text{is the covariate and} \; p \; \text{is the degree of the polynomial.}
+$$
 
-## B-spline model plot
+## B-spline plot
 
 ```{r B-spline}
 p <- autoplot(df) +
@@ -251,9 +253,28 @@ $$
 k(x_{i}, x_{j}) = h^{2} exp[-(\frac{x_{i} - x_{j}}{\lambda})^{2}]
 $$
 
+## Gaussian process as a Multivariate Normal distribution
+
+:::{#fig-mvn}
+
+![](mvn.png)
+
+Gaussian process as a Multivariate Normal distribution
+
+:::
+
 ## Gaussian process plot
 
+:::{#fig-gp}
+![](density.png)
+
+Gaussian process plot
+
+:::
+
 ```{r Gaussian-process}
+#| eval: FALSE
+
 set.seed(1)
 
 x <- train_time
@@ -321,6 +342,7 @@ autoplot(df) +
 
 ```{r Prior-model}
 #| eval: FALSE
+
 # Gaussian process parameters
 alpha_true <- 15
 rho_true <- 5
@@ -351,6 +373,7 @@ prior_model <- stan(
 
 ```{r Pior-realizations}
 #| eval: FALSE
+
 set.seed(1)
 prior_samples <- (extract(prior_model)$f)[1:10, ]
 p <- ggplot() + 
@@ -370,6 +393,7 @@ p +
 
 ```{r Posterior-model}
 #| eval: FALSE
+
 # Concatenate
 x_predict <- c(train_time, test_time) 
 N_predict <- length(x_predict) 
