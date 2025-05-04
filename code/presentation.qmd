@@ -17,7 +17,7 @@ format:
 ```{r Setup}
 options(repos=c(CRAN='https://cloud.r-project.org'))
 
-packs <- c('cmdstanr', 'dplyr', 'forecast', 'fpp2', 'ggfortify', 'gifski', 
+packs <- c('dplyr', 'forecast', 'fpp2', 'ggfortify', 'gifski', 
 			  'ggplot2', 'knitr', 'mvtnorm', 'splines', 'rstan')
 
 for(pack in packs){
@@ -296,6 +296,10 @@ $$
 :::{.no-caption}
 ![](quantiles.png){width=1500px height=500px}
 :::
+
+## Looking ahead 
+the multidimensional properties of Gaussian Process Regression can be extended to predict a group of commodity prices. While traditional models like ARIMA estimate commodities independently, GPR allows us to capture correlations between prices across different commodities.
+
 
 ## References
 
