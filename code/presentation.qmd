@@ -26,13 +26,6 @@ for(pack in packs){
 	}
 	library(pack, character.only=TRUE)
 }
-
-colors <- c('skyblue', 'seagreen', 'pink', 'cyan', 'gray', 'salmon', 'steelblue')
-
-# Stan setup
-rstan_options(auto_write=TRUE)
-options(mc.cores=parallel::detectCores())
-parallel:::setDefaultClusterOptions(setup_strategy='sequential')
 ```
 
 ## Plot of the dataset
@@ -298,7 +291,11 @@ $$
 :::
 
 ## Looking ahead 
-the multidimensional properties of Gaussian Process Regression can be extended to predict a group of commodity prices. While traditional models like ARIMA estimate commodities independently, GPR allows us to capture correlations between prices across different commodities.
+
+The multidimensional properties of Gaussian Process Regression can be extended to predict a group of commodity prices. 
+
+While traditional models like ARIMA estimate commodities independently, 
+GPR allows us to capture correlations between prices across different commodities.
 
 
 ## References

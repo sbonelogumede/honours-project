@@ -11,10 +11,10 @@ y <- mvtnorm::rmvnorm(1, mean=mx, sigma=Sigma_SE)
 plot(
 	x, 
 	y, 
-	ylim=c(-10, 10),
-	xlab='Time',
-	lwd=2,
-	col=1
+	ylim = c(-10, 10),
+	xlab = 'Time',
+	lwd = 2,
+	col = 1
 )
 
 for (i in 1:5) {
@@ -32,20 +32,20 @@ train_time <- as.numeric(time(train)) # Extract the time component for training 
 test_time <- as.numeric(time(test)) # Extract the time component for testing data
 
 data_list <- list(
-	y_obs=train, 
-	x_obs=train_time, 
-	N_obs=length(train_time), 
-	x2=test_time, 
-	N2=length(test_time)
+	y_obs = train, 
+	x_obs = train_time, 
+	N_obs = length(train_time), 
+	x2 = test_time, 
+	N2 = length(test_time)
 )
 
 m1 <- cmdstan_model(stan_file='stan/presentaion.stan')
 
 m1.fit <- m1$sample(
-	data=data_list, 
-	seed=123, 
-	chains=4, 
-	parallel_chains=2
+	data = data_list, 
+	seed = 123, 
+	chains = 4, 
+	parallel_chains = 2
 )
 
 train_preds <- ?
