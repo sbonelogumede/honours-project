@@ -420,13 +420,14 @@ t \; \text{is the covariate and} \; p \; \text{is the degree of the polynomial.}
 </section>
 <section id="gaussian-process-as-a-multivariate-normal-distribution" class="slide level2">
 <h2>Gaussian process as a Multivariate Normal distribution</h2>
-
-<img data-src="mvn.png" class="r-stretch quarto-figure-center"><p class="caption">
-Figure&nbsp;1: Gaussian process as a Multivariate Normal distribution
-</p></section>
+<div class="no-caption">
+<p><img data-src="mvn.png" width="1500" height="500"></p>
+</div>
+</section>
 <section id="predictions" class="slide level2">
 <h2>Predictions</h2>
 <h4 id="mean-vector">Mean vector</h4>
+<div style="overflow-x: auto; font-size: 80%;">
 <p><span class="math display">\[
 \mathbf{m} =
 \begin{bmatrix}
@@ -438,10 +439,12 @@ Figure&nbsp;1: Gaussian process as a Multivariate Normal distribution
 \mu(x_{N_{\text{pred}}}^{\text{pred}})
 \end{bmatrix}
 \]</span></p>
+</div>
 </section>
 <section id="predictions-1" class="slide level2">
 <h2>Predictions</h2>
 <h4 id="covariance-matrix">Covariance matrix</h4>
+<div style="overflow-x: auto; font-size: 80%;">
 <p><span class="math display">\[
 \mathbf{K} =
 \begin{bmatrix}
@@ -453,13 +456,54 @@ k(x_{1}^{\text{pred}}, x_{1}^{\text{obs}}) &amp; \cdots &amp; k(x_{1}^{\text{pre
 k(x_{N_{\text{pred}}}^{\text{pred}}, x_{1}^{\text{obs}}) &amp; \cdots &amp; k(x_{N_{\text{pred}}}^{\text{pred}}, x_{N_{\text{obs}}}^{\text{obs}}) &amp; \quad &amp; k(x_{N_{\text{pred}}}^{\text{pred}}, x_{1}^{\text{pred}}) &amp; \cdots &amp; k(x_{N_{\text{pred}}}^{\text{pred}}, x_{N_{\text{pred}}}^{\text{pred}})
 \end{bmatrix}
 \]</span></p>
+</div>
+</section>
+<section id="compactly" class="slide level2">
+<h2>Compactly</h2>
+<div style="display: flex; justify-content: space-around; align-items: center;">
+<div style="flex: 1; text-align: center;">
+<p><span class="math display">\[
+\mathbf{m} =
+\begin{bmatrix}
+\mathbf{m}_{\text{obs}} \\
+\mathbf{m}_{\text{pred}}
+\end{bmatrix}
+\]</span></p>
+</div>
+<div style="flex: 1; text-align: center;">
+<p><span class="math display">\[
+\mathbf{K} =
+\begin{bmatrix}
+\mathbf{K}_{\text{obs}} \quad \mathbf{K}_{\text{mix}} \\
+(\mathbf{K}_{\text{mix}})^{\top} \quad \mathbf{K}_{\text{pred}}
+\end{bmatrix}
+\]</span></p>
+</div>
+</div>
+<h4 id="conditional-density">Conditional density</h4>
+<p><span class="math display">\[
+\pi(\mathbf{f}_{pred} | \mathbf{f}_{obs}) =
+\text{multi-normal}(\boldsymbol{\mu}, \boldsymbol{\Sigma})
+\]</span></p>
+<h4 id="with-the-location-parameters">with the location parameters</h4>
+<p><span class="math display">\[
+\boldsymbol{\mu} =
+\mathbf{m}_{pred} +
+(\mathbf{K}_{mix})^{T} \cdot (\mathbf{K}_{obs})^{-1} \cdot ( \mathbf{f}_{obs} - \mathbf{m}_{obs})
+\]</span></p>
+<h4 id="and-the-covariance-matrix-parameters">and the covariance matrix parameters</h4>
+<p><span class="math display">\[
+\boldsymbol{\Sigma} =
+\mathbf{K}_{pred} -
+(\mathbf{K}_{mix})^{T} \cdot (\mathbf{K}_{obs})^{-1} \cdot \mathbf{K}_{mix}
+\]</span></p>
 </section>
 <section id="gaussian-process-plot" class="slide level2">
 <h2>Gaussian process plot</h2>
-
-<img data-src="density.png" class="r-stretch quarto-figure-center"><p class="caption">
-Figure&nbsp;2: Gaussian process plot
-</p><div class="quarto-auto-generated-content">
+<div class="no-caption">
+<p><img data-src="density.png" width="1500" height="500"></p>
+</div>
+<div class="quarto-auto-generated-content">
 <div class="footer footer-default">
 
 </div>
