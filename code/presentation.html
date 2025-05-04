@@ -418,8 +418,30 @@ t \; \text{is the covariate and} \; p \; \text{is the degree of the polynomial.}
 <h4 id="meaning">Meaning</h4>
 <p><span class="math display">\[f \sim GP(m, k) \rightarrow f_{n} \sim MVN(\mathbf{m}, \mathbf{K})\]</span> <span class="math display">\[\pi(y_{n};f(x_{n}),\phi) \rightarrow \pi(y_{n}; f_{n}, \phi)\]</span></p>
 </section>
+<section id="example" class="slide level2">
+<h2>Example</h2>
+<h4 id="gaussian-process-parameters">Gaussian process parameters</h4>
+<p><span class="math display">\[
+m(x_{i}) = 0
+\]</span> <span class="math display">\[
+k(x_{i}, x_{j}) =
+\alpha^2exp(-\frac{1}{2}(\frac{|x_{i} - x_{j}|}{\rho})^2)\\
+\text{where,}\\
+\alpha \;
+\text{controls the marginal variability} \\
+\text{and}\\
+\rho \;
+\text{controls how quickly the correlations between function values decay.}
+\]</span></p>
+<h4 id="multivariate-normal-parameters">Multivariate normal parameters</h4>
+<p><span class="math display">\[
+m_{i} = m(x_i) = 0 \quad (i=1, .., k)
+\]</span> <span class="math display">\[
+K_{i,j} = k(x_{i}, x_{j}) \quad (i,j = 1, .., k)
+\]</span></p>
+</section>
 <section id="gaussian-process-as-a-multivariate-normal-distribution" class="slide level2">
-<h2>Gaussian process as a Multivariate Normal distribution</h2>
+<h2>Gaussian process as a multivariate normal distribution</h2>
 <div class="no-caption">
 <p><img data-src="mvn.png" width="1500" height="500"></p>
 </div>

@@ -183,7 +183,34 @@ A time continuous stochastic process $\{X_{t}; \ t \in T\}$ is Gaussian if and o
 
 $$f \sim GP(m, k) \rightarrow f_{n} \sim MVN(\mathbf{m}, \mathbf{K})$$ $$\pi(y_{n};f(x_{n}),\phi) \rightarrow \pi(y_{n}; f_{n}, \phi)$$
 
-## Gaussian process as a Multivariate Normal distribution
+## Example
+
+#### Gaussian process parameters
+
+$$
+m(x_{i}) = 0
+$$
+$$
+k(x_{i}, x_{j}) =
+\alpha^2exp(-\frac{1}{2}(\frac{|x_{i} - x_{j}|}{\rho})^2)\\
+\text{where,}\\
+\alpha \; 
+\text{controls the marginal variability} \\
+\text{and}\\
+\rho \;
+\text{controls how quickly the correlations between function values decay.}
+$$
+
+#### Multivariate normal parameters
+
+$$
+m_{i} = m(x_i) = 0 \quad (i=1, .., k)
+$$
+$$
+K_{i,j} = k(x_{i}, x_{j}) \quad (i,j = 1, .., k)
+$$
+
+## Gaussian process as a multivariate normal distribution
 
 :::{.no-caption}
 ![](mvn.png){width=1500px height=500px}
