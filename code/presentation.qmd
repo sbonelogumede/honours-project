@@ -113,17 +113,16 @@ $$
 ## Polynomial regression plot
 
 ```{r Polynomial-regression}
-polynomial_regression <- lm(train ~ train_time + I(train_time^2) + I(train_time^3) + I(train_time^4))
-train_preds <- predict(polynomial_regression, newdata=data.frame(train_time=train_time)) # Spline on training data
-test_preds <- predict(polynomial_regression, newdata=data.frame(train_time=test_time)) # Extrapolate
-train_ts <- ts(train_preds, start=start(train), frequency=frequency(train)) # Convert to ts
+polynomial_regression <- lm(train ~ train_time + I(train_time^2) + I(train_time^3))
+train_preds <- predict(polynomial_regression, newdata=data.frame(train_time=train_time))
+test_preds <- predict(polynomial_regression, newdata=data.frame(train_time=test_time))
+train_ts <- ts(train_preds, start=start(train), frequency=frequency(train))
 test_ts <- ts(test_preds, start=start(test), frequency=frequency(test))
 
 autoplot(df) +
-	autolayer(train_ts, series='Train Linear Model', size=1.5) +
-	autolayer(test_ts, series='Test Linear Model', size=1.5) +
-	scale_color_manual(values=c('Train Linear Model'='lightskyblue', 
-										 'Test Linear Model'='darkorange')) +
+	autolayer(train_ts, series='Train', size=1.5) +
+	autolayer(test_ts, series='Test', size=1.5) +
+	scale_color_manual(values=c('Train'='lightskyblue', 'Test'='darkorange')) +
 	labs(title='Daily Closing Prices of FTSE (1991-1998)',
 		  x='Time',
 		  y='FTSE',
@@ -162,49 +161,23 @@ $$
 ## B-spline plot
 
 ```{r B-spline}
-p <- autoplot(df) +
-		labs(title='Daily Closing Prices of FTSE (1991-1998)',
-			  x='Time',
-			  y='FTSE',
-			  color='Legend') + 
-		theme_minimal() +
-		theme(legend.text = element_text(size = 14), 
-				legend.title = element_text(size = 16))
+spline_model <- lm(train ~ bs(train_time, df=3))
+train_preds <- predict(spline_model, newdata=data.frame(train_time=train_time))
+test_preds <- predict(spline_model, newdata=data.frame(train_time=test_time))
+train_ts <- ts(train_preds, start=start(train), frequency=frequency(train))
+test_ts <- ts(test_preds, start=start(test), frequency=frequency(test))
 
-color_values <- c()
-
-for(dof in 2:8){
-	# Fit a spline model
-	spline_model <- lm(train ~ bs(train_time, df=dof))
-	
-	# Make predictions
-	train_preds <- predict(spline_model, newdata=data.frame(train_time=train_time))
-	test_preds <- predict(spline_model, newdata=data.frame(train_time=test_time))
-	
-	# Convert to time series
-	train_ts <- ts(train_preds, start=start(train), frequency=frequency(train))
-	test_ts <- ts(test_preds, start=start(test), frequency=frequency(test))
-	
-	# Create series name
-	train_name <- paste0('Train Spline df=', dof)
-	test_name <- paste0('Test Spline df=', dof)
-	
-	# Add layers to the plot
-	p <- p + 
-		autolayer(train_ts, series=train_name, size=1.2) +
-		autolayer(test_ts, series=test_name, size=1.2)
-	
-	# Assign colors to the named vector
-	color_idx <- (dof-1) %% length(colors) + 1
-	color_values[train_name] <- paste0('light', colors[color_idx])
-	color_values[test_name] <- paste0(colors[color_idx])
-}
-
-# Add a custom color scale - using the first two colors for each df value
-p <- p + scale_color_manual(values=color_values)
-
-# Display the final plot
-print(p)
+autoplot(df) +
+	autolayer(train_ts, series='Train', size=1.5) +
+	autolayer(test_ts, series='Test', size=1.5) +
+	scale_color_manual(values=c('Train'='lightskyblue', 'Test'='darkorange')) +
+	labs(title='Daily Closing Prices of FTSE (1991-1998)',
+		  x='Time',
+		  y='FTSE',
+		  color='Legend') + 
+	theme_minimal() +
+	theme(legend.text = element_text(size = 14), 
+			legend.title = element_text(size = 16))
 ```
 
 ## Gaussian process
@@ -217,7 +190,19 @@ A time continuous stochastic process $\{X_{t}; \ t \in T\}$ is Gaussian if and o
 
 $$f \sim GP(m, k) \rightarrow f_{n} \sim MVN(\mathbf{m}, \mathbf{K})$$ $$\pi(y_{n};f(x_{n}),\phi) \rightarrow \pi(y_{n}; f_{n}, \phi)$$
 
-## Mean vector
+## Gaussian process as a Multivariate Normal distribution
+
+:::{#fig-mvn}
+
+![](mvn.png)
+
+Gaussian process as a Multivariate Normal distribution
+
+:::
+
+## Predictions
+
+#### Mean vector
 
 $$
 \mathbf{m} =
@@ -231,7 +216,9 @@ $$
 \end{bmatrix}
 $$
 
-## Covariance matrix
+## Predictions
+
+#### Covariance matrix
 
 $$
 \mathbf{K} = 
@@ -244,24 +231,6 @@ k(x_{1}^{\text{pred}}, x_{1}^{\text{obs}}) & \cdots & k(x_{1}^{\text{pred}}, x_{
 k(x_{N_{\text{pred}}}^{\text{pred}}, x_{1}^{\text{obs}}) & \cdots & k(x_{N_{\text{pred}}}^{\text{pred}}, x_{N_{\text{obs}}}^{\text{obs}}) & \quad & k(x_{N_{\text{pred}}}^{\text{pred}}, x_{1}^{\text{pred}}) & \cdots & k(x_{N_{\text{pred}}}^{\text{pred}}, x_{N_{\text{pred}}}^{\text{pred}})
 \end{bmatrix}
 $$
-
-## Covariance function
-
-#### Squared exponential
-
-$$
-k(x_{i}, x_{j}) = h^{2} exp[-(\frac{x_{i} - x_{j}}{\lambda})^{2}]
-$$
-
-## Gaussian process as a Multivariate Normal distribution
-
-:::{#fig-mvn}
-
-![](mvn.png)
-
-Gaussian process as a Multivariate Normal distribution
-
-:::
 
 ## Gaussian process plot
 

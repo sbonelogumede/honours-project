@@ -12,7 +12,7 @@
 
   <meta name="author" content="Azar Raphaela">
   <meta name="author" content="Gumede Sbonelo">
-  <meta name="dcterms.date" content="2025-05-03">
+  <meta name="dcterms.date" content="2025-05-04">
   <title>Gaussian Processes for Time Series Modelling</title>
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -350,7 +350,7 @@ Gumede Sbonelo
     </div>
 </div>
 
-  <p class="date">2025-05-03</p>
+  <p class="date">2025-05-04</p>
 </section>
 <section id="plot-of-the-dataset" class="slide level2">
 <h2>Plot of the dataset</h2>
@@ -418,8 +418,15 @@ t \; \text{is the covariate and} \; p \; \text{is the degree of the polynomial.}
 <h4 id="meaning">Meaning</h4>
 <p><span class="math display">\[f \sim GP(m, k) \rightarrow f_{n} \sim MVN(\mathbf{m}, \mathbf{K})\]</span> <span class="math display">\[\pi(y_{n};f(x_{n}),\phi) \rightarrow \pi(y_{n}; f_{n}, \phi)\]</span></p>
 </section>
-<section id="mean-vector" class="slide level2">
-<h2>Mean vector</h2>
+<section id="gaussian-process-as-a-multivariate-normal-distribution" class="slide level2">
+<h2>Gaussian process as a Multivariate Normal distribution</h2>
+
+<img data-src="mvn.png" class="r-stretch quarto-figure-center"><p class="caption">
+Figure&nbsp;1: Gaussian process as a Multivariate Normal distribution
+</p></section>
+<section id="predictions" class="slide level2">
+<h2>Predictions</h2>
+<h4 id="mean-vector">Mean vector</h4>
 <p><span class="math display">\[
 \mathbf{m} =
 \begin{bmatrix}
@@ -432,8 +439,9 @@ t \; \text{is the covariate and} \; p \; \text{is the degree of the polynomial.}
 \end{bmatrix}
 \]</span></p>
 </section>
-<section id="covariance-matrix" class="slide level2">
-<h2>Covariance matrix</h2>
+<section id="predictions-1" class="slide level2">
+<h2>Predictions</h2>
+<h4 id="covariance-matrix">Covariance matrix</h4>
 <p><span class="math display">\[
 \mathbf{K} =
 \begin{bmatrix}
@@ -446,19 +454,6 @@ k(x_{N_{\text{pred}}}^{\text{pred}}, x_{1}^{\text{obs}}) &amp; \cdots &amp; k(x_
 \end{bmatrix}
 \]</span></p>
 </section>
-<section id="covariance-function" class="slide level2">
-<h2>Covariance function</h2>
-<h4 id="squared-exponential">Squared exponential</h4>
-<p><span class="math display">\[
-k(x_{i}, x_{j}) = h^{2} exp[-(\frac{x_{i} - x_{j}}{\lambda})^{2}]
-\]</span></p>
-</section>
-<section id="gaussian-process-as-a-multivariate-normal-distribution" class="slide level2">
-<h2>Gaussian process as a Multivariate Normal distribution</h2>
-
-<img data-src="mvn.png" class="r-stretch quarto-figure-center"><p class="caption">
-Figure&nbsp;1: Gaussian process as a Multivariate Normal distribution
-</p></section>
 <section id="gaussian-process-plot" class="slide level2">
 <h2>Gaussian process plot</h2>
 
