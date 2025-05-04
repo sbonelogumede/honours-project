@@ -52,6 +52,79 @@ train_time <- as.numeric(time(train)) # Extract the time component for training 
 test_time <- as.numeric(time(test)) # Extract the time component for testing data
 ```
 
+## Linear regression
+
+#### Definition
+
+Linear regression is a model that estimates the relationship between a scalar response (dependent variable) and one or more explanatory variables (independent variable).
+
+#### Form
+
+$$
+y_i = \beta_0 + \beta_1x_{i1} + \beta_2x_{i2}+ ... + \beta_mx_{ip} + \varepsilon_i \; (i= 1, 2, ..., n)\\
+where\\
+\varepsilon \sim \mathcal{N}(0, \sigma^2)
+$$
+
+## Linear regression plot
+
+```{r Linear-regression}
+linear_regression <- lm(train ~ train_time)
+train_preds <- predict(linear_regression, newdata=data.frame(train_time=train_time)) # Spline on training data
+test_preds <- predict(linear_regression, newdata=data.frame(train_time=test_time)) # Extrapolate
+train_ts <- ts(train_preds, start=start(train), frequency=frequency(train)) # Convert to ts
+test_ts <- ts(test_preds, start=start(test), frequency=frequency(test))
+
+autoplot(df) +
+	autolayer(train_ts, series='Train', size=1.5) +
+	autolayer(test_ts, series='Test', size=1.5) +
+	scale_color_manual(values=c('Train'='lightskyblue', 
+										 'Test'='darkorange')) +
+	labs(title='Daily Closing Prices of FTSE (1991-1998)',
+		  x='Time',
+		  y='FTSE',
+		  color='Legend') + 
+	theme_minimal() +
+	theme(legend.text = element_text(size = 14), 
+			legend.title = element_text(size = 16))
+```
+
+## Polynomial regression
+
+#### Definition
+
+Polynomial regression is a form of regression analysis in which the relationship between the independent variable x and the dependent variable y is modeled as a polynomial in x.
+
+#### Form
+
+$$
+y_i = \beta_0 + \beta_1x_{i} + \beta_2x_{i}^{2} + ... + \beta_mx_{i}^{m} + \varepsilon_i \; (i= 1, 2, ..., n)\\
+where\\
+\varepsilon \sim \mathcal{N}(0, \sigma^2)
+$$
+
+## Polynomial regression plot
+
+```{r Polynomial-regression}
+polynomial_regression <- lm(train ~ train_time + I(train_time^2) + I(train_time^3))
+train_preds <- predict(polynomial_regression, newdata=data.frame(train_time=train_time))
+test_preds <- predict(polynomial_regression, newdata=data.frame(train_time=test_time))
+train_ts <- ts(train_preds, start=start(train), frequency=frequency(train))
+test_ts <- ts(test_preds, start=start(test), frequency=frequency(test))
+
+autoplot(df) +
+	autolayer(train_ts, series='Train', size=1.5) +
+	autolayer(test_ts, series='Test', size=1.5) +
+	scale_color_manual(values=c('Train'='lightskyblue', 'Test'='darkorange')) +
+	labs(title='Daily Closing Prices of FTSE (1991-1998)',
+		  x='Time',
+		  y='FTSE',
+		  color='Legend') + 
+	theme_minimal() +
+	theme(legend.text = element_text(size = 14), 
+			legend.title = element_text(size = 16))
+```
+
 ## B-spline
 
 #### Definition
