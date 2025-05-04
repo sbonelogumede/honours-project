@@ -9,7 +9,7 @@ institute:
 date: today
 format: 
   revealjs:
-    incremental: true
+    incremental: false
     transition: fade
     css: css/styles.css
 ---
@@ -289,3 +289,22 @@ $$
 :::{.no-caption}
 ![](density.png){width=1500px height=500px}
 :::
+
+
+## Gaussian process posterior plot
+
+:::{.no-caption}
+![](quantiles.png){width=1500px height=500px}
+:::
+
+## References
+
+- Rasmussen & Williams. Gaussian Processes for Machine Learning. MIT. 
+https://direct.mit.edu/books/book/2320/Gaussian-Processes-for-Machine-Learning
+- Rasmussen 2006. Gaussian Processes in Machine Learning.
+- Robertsetal. Gaussian processes for time-series modelling. Philosophical Transactions of the Royal Society.
+- https://betanalpha.github.io/assets/case_studies/gaussian_processes.html
+- Ebden 2008. Gaussian Processes for Regression: A Quick Introduction.
+- Neal, R.M. 1997. MonteCarlo Implementation of Gaussian Process Models for Bayesian Regression and Classification. arXiv.
+https://doi.org/10.48550/arXiv.physics/9701026
+- Neal, R.M. 1998. Regression and Classification Using Gaussian Process Priors in J.M.Bernardoetal. (eds) Bayesian Statistics 6. Oxford University Press.
