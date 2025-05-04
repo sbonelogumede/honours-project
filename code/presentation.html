@@ -418,6 +418,26 @@ t \; \text{is the covariate and} \; p \; \text{is the degree of the polynomial.}
 <h4 id="meaning">Meaning</h4>
 <p><span class="math display">\[f \sim GP(m, k) \rightarrow f_{n} \sim MVN(\mathbf{m}, \mathbf{K})\]</span> <span class="math display">\[\pi(y_{n};f(x_{n}),\phi) \rightarrow \pi(y_{n}; f_{n}, \phi)\]</span></p>
 </section>
+<section id="common-kernel-functions" class="slide level2">
+<h2>Common kernel functions</h2>
+<h4 id="linear">Linear</h4>
+<p><span class="math display">\[
+k(x_{i}, x_{j}) = \sigma^2(x_{i} - c)(x_{j} - c)
+\]</span></p>
+<h4 id="squared-exponential">Squared exponential</h4>
+<p><span class="math display">\[
+k(x_{i}, x_{j}) =
+\alpha^2exp(-\frac{1}{2}(\frac{|x_{i} - x_{j}|}{\rho})^2)\\
+\text{where, } \alpha \; \text{controls the marginal variability} \; \text{and}\\
+\rho \;
+\text{controls how quickly the correlations between function values decay.}
+\]</span></p>
+<h4 id="generalization-of-the-squared-exponential">Generalization of the squared exponential</h4>
+<p><span class="math display">\[
+k(x_{i}, x_{j}) = \frac{2^{1-v}}{\Gamma(v)}(\sqrt{2v} \frac{|x_{i} - x_{j}|}{\rho})^{v}K_{v}(\sqrt{2v} \frac{|x_{i} - x_{j}|}{\rho}),\\
+\text{where} \; K_{ν} \; \text{is a modified Bessel function of the second kind.}
+\]</span></p>
+</section>
 <section id="example" class="slide level2">
 <h2>Example</h2>
 <h4 id="gaussian-process-parameters">Gaussian process parameters</h4>

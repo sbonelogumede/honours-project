@@ -183,6 +183,31 @@ A time continuous stochastic process $\{X_{t}; \ t \in T\}$ is Gaussian if and o
 
 $$f \sim GP(m, k) \rightarrow f_{n} \sim MVN(\mathbf{m}, \mathbf{K})$$ $$\pi(y_{n};f(x_{n}),\phi) \rightarrow \pi(y_{n}; f_{n}, \phi)$$
 
+## Common kernel functions
+
+#### Linear
+
+$$
+k(x_{i}, x_{j}) = \sigma^2(x_{i} - c)(x_{j} - c)
+$$
+
+#### Squared exponential
+
+$$
+k(x_{i}, x_{j}) =
+\alpha^2exp(-\frac{1}{2}(\frac{|x_{i} - x_{j}|}{\rho})^2)\\
+\text{where, } \alpha \; \text{controls the marginal variability} \; \text{and}\\
+\rho \;
+\text{controls how quickly the correlations between function values decay.}
+$$
+
+#### Generalization of the squared exponential
+
+$$
+k(x_{i}, x_{j}) = \frac{2^{1-v}}{\Gamma(v)}(\sqrt{2v} \frac{|x_{i} - x_{j}|}{\rho})^{v}K_{v}(\sqrt{2v} \frac{|x_{i} - x_{j}|}{\rho}),\\
+\text{where} \; K_{ν} \; \text{is a modified Bessel function of the second kind.}
+$$
+
 ## Example
 
 #### Gaussian process parameters
