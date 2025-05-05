@@ -1,0 +1,27 @@
+---
+title: "Environmental Data Analysis"
+author:
+  - Raphaela Azah
+  - Sbonelo Gumede
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+High levels of fine particulate matter (PM2.5) are dangerous to human health. This material is present in the atmosphere due to combustion from cars, factories and wildfires. This is a big problem in Cape Town because these combustion producing agents are all relevant. In this study we aim to understand the levels of PM2.5 present in the atmosphere and forecast the future levels of this material. We focus on the year 2019.
+
+The variables we are going to use are the following:
+
+Ozone ($O_{3}$)
+Sulphur dioxide ($SO_{2}$)
+
+### Proposed model
+
+$$
+\mathbf{y}_{PM2.5} = \boldsymbol{\beta}_{PM10}\mathbf{x}_{PM10} + \boldsymbol{\beta}_{Temperature}\mathbf{x}_{Temperature} + \boldsymbol{\beta}_{Humidity}\mathbf{x}_{Humidity} + e \; \text{, where} \; e \sim GP(m, k)
+$$
