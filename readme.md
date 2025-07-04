@@ -1,12 +1,22 @@
-## Project: Honours Minor Dissertation
+## Project:
 
-## Institution: The University of Cape Town
+Honours Minor Dissertation
 
-## Topic: Gaussian Processes for Time Series Modelling
+## Institution:
 
-## Authors: Raphaela Azah and Sbonelo Gumede
+The University of Cape Town
 
-## Supervisor: Professor Birgit Erni
+## Topic:
+
+Gaussian Processes for Time Series Modelling
+
+## Authors:
+
+Raphaela Azah and Sbonelo Gumede
+
+## Supervisor:
+
+Professor Birgit Erni
 
 ## Abstract:
 
