@@ -1,21 +1,16 @@
-# Minor Dissertation
+## Project: Honours Minor Dissertation
 
-## Topic:
+## Institution: The University of Cape Town
 
-Gaussian Processes for Time Series Modelling
+## Topic: Gaussian Processes for Time Series Modelling
 
-## Authors:
+## Authors: Raphaela Azah and Sbonelo Gumede
 
-- Raphaela Azah
-- Sbonelo Gumede
+## Supervisor: Professor Birgit Erni
 
-## Supervisor:
+## Abstract:
 
-Dr. Birgit Erni
-
-## Institution:
-
-The University of Cape Town
+There are many ways to model the autocorrelation structure in time series (or longitudinal) data. Capturing the correlation structure through a Gaussian Process is a non-parametric approach which is very flexible and a good approach for capturing uncertainties. For this project you will learn to use Gaussian processes for modelling time series data, to simulate from Gaussian processes, reproduce existing model fits to data, and then model a local data set (air pollution data / you can choose something else) using Gaussian processes.
 
 ## Datasets:
 
