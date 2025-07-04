@@ -26,6 +26,10 @@ There are many ways to model the autocorrelation structure in time series (or lo
 
 https://odp-cctegis.opendata.arcgis.com/
 
+## Tutorial
+
+https://betanalpha.github.io/assets/case_studies/gaussian_processes.html
+
 ## Good Practices:
 
 - Start with a motivating example to help the audience understand the current practices and their limitations.
