@@ -2,7 +2,7 @@
 library(ggplot2)
 library(readr)
 
-gold_data <- read_csv("XAU_ZAR Historical Data.csv")
+gold_data <- read_csv("../data/XAU_ZAR Historical Data.csv")
 head(gold_data)
 # Convert the 'Date' column to Date format
 gold_data$Date <- as.Date(gold_data$Date, format="%Y-%m-%d")

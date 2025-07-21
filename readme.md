@@ -37,3 +37,20 @@ https://betanalpha.github.io/assets/case_studies/gaussian_processes.html
 - Prove that the proposition is true.
 - State the consequences of the proposition.
 - Check how the slides appear on the projector because the text might be small on the projector.
+
+## Most Important Papars:
+
+- Roberts et al. 2013
+
+## Response:
+
+- KBP5356M -: Gold Price
+
+## Features:
+
+KBP7060N -:
+
+Code Unit of Measure Description
+KBP7060N Index Indicators of real economic activity: Mining production: Gold
+KBP5357M [object Object] London gold price in US dollar
+KBP5806M Millions US$ Gross gold and other foreign reserves

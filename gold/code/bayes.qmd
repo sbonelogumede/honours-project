@@ -9,7 +9,7 @@ library(readr)
 library(dplyr)
 library(ggplot2)
 
-df <- read_csv("~/GitHub/honours-project/gold data/XAU_ZAR Historical Data.csv") %>%
+df <- read_csv("~/GitHub/honours-project/gold/data/XAU_ZAR Historical Data.csv") %>%
   mutate(
     Date  = as.Date(Date, format = "%m/%d/%Y"),
     Price = as.numeric(gsub(",", "", Price))

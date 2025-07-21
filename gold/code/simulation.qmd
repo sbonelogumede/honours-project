@@ -64,17 +64,11 @@ scale_fill_discrete <- function(...) {
 
 Gaussian process (GP) allows us to specify a vast amount of non-linear curves, so to speak. More concretely, a GP, defined by a kernel \\( k(\\cdot) \\), a mean function \\( m(\\cdot) \\), and the parameters \\( \\sigma_f \\) and \\( \\lambda \\), implies a prior of functions. This is very abstract and best explored through simulation.
 
-\\\[
-k(\\cdot),
-\\\]
+\\\[ k(\\cdot), \\\]
 
-\\\[
-m(\\cdot),
-\\\]
+\\\[ m(\\cdot), \\\]
 
-\\\[
-\\sigma_f \\quad \\text{and} \\quad \\lambda,
-\\\]
+\\\[ \\sigma_f \\quad \\text{and} \\quad \\lambda, \\\]
 
 implies a prior of functions. This is very abstract and best explored through simulation.
 
