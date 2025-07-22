@@ -67,23 +67,44 @@ test <- data_storage[[2]]
 cor_matrix <- train %>%
    select(-Date) %>%
    cor(use = "na.or.complete", method = "pearson")
-corrplot(corr = cor_matrix, method = "color", type = "lower")
+p1 <- corrplot(corr = cor_matrix, method = "number", type = "lower")
 
 # Scatter plot of the response variable.
-ggplot(data = train, mapping = aes(x = Date, y = NO2))+
-   geom_point(color = "steelblue", size = 2, pch = 18)+
+p2 <- ggplot(data = train, mapping = aes(x = Date, y = NO2))+
+   geom_point(color = "lightcoral", size = 2, pch = 18)+
+   theme_minimal()
+
+# Scatter plot of the log of the response variable.
+p3 <- ggplot(data = train, mapping = aes(x = Date, y = log(NO2)))+
+   geom_point(color = "lightseagreen", size = 2, pch = 18)+
    theme_minimal()
 
 # Histogram of the response variable.
-ggplot(data = train, mapping = aes(x = NO2))+
+p4 <- ggplot(data = train, mapping = aes(x = NO2))+
    geom_histogram(mapping = aes(y = ..density..), 
-                  color = "lightskyblue", fill = "steelblue")+
+                  color = "black", fill = "lightcoral")+
    labs(x=expression(NO[2]))+
    theme_minimal()
 
 # Histogram of the log of the response variable.
-ggplot(data = train, mapping = aes(x = log(NO2)))+
+p5 <- ggplot(data = train, mapping = aes(x = log(NO2)))+
    geom_histogram(mapping = aes(y = ..density..), 
-                  color = "lightskyblue", fill = "steelblue")+
+                  color = "black", fill = "lightseagreen")+
    labs(x=expression(log(NO[2])))+
    theme_minimal()
+
+# Display the plots.
+p1
+p2
+p3
+p4
+p5
+
+# Save the plots.
+png(filename="../images/corrplot_2019.png", width=8, height = 6, res = 600, units = "in")
+corrplot(corr = cor_matrix, method = "number", type = "lower")
+dev.off()
+ggsave(filename = "../images/no2_scatter_2019.png", plot = p2, width=8, height = 6, dpi = 600, units = "in")
+ggsave(filename = "../images/log_no2_scatter_2019.png", plot = p3, width=8, height = 6, dpi = 600, units = "in")
+ggsave(filename = "../images/no2_hist_2019.png", plot = p4, width=8, height = 6, dpi = 600, units = "in")
+ggsave(filename = "../images/log_no2_hist_2019.png", plot = p5, width=8, height = 6, dpi = 600, units = "in")
