@@ -28,7 +28,7 @@ for(i in 1:2){
                c("G6:G8742", "G6:G8742", "I6:I8742", "N6:N8742", "O6:O8742")), 
       nrow = 2, ncol = 5, byrow = TRUE)
    
-   temp <- read_excel(
+   outer_temp <- read_excel(
       path = paste("..", "data", file_names[1], sep = "/"),
       range = "A6:A8742",
       col_names = FALSE) %>%
@@ -36,16 +36,27 @@ for(i in 1:2){
       as.POSIXct(format = "%d/%m/%Y %H:%M")
    
    for (j in 1:5) {
-      temp <- cbind(temp, read_excel(
+      # Read the column of interest from the data.
+      inner_temp <- read_excel(
          path = paste("..", "data", file_names[j], sep = "/"),
          range = cell_ranges[i, j],
          col_names = FALSE,
-         col_types = "numeric",
-         na = c("Down", "InVld", "NoData", "Zero", "<Samp")
-      ))
+         col_types = "text"
+      )
+      
+      # Handle the case where x=0 gracefully.
+      inner_temp <- inner_temp %>%
+         mutate(across(everything(), ~ case_when(
+            .x %in% c("Down", "InVld", "NoData", "<Samp") ~ NA_real_,
+            .x == "Zero" ~ 0,
+            TRUE ~ as.numeric(.x)
+         )))
+      
+      outer_temp <- cbind(outer_temp, inner_temp)
    }
-   colnames(temp) <- c("DateTime", "NO2", "PM10", "SO2", "Direction", "Speed")
-   data_storage[[i]] <- temp
+   colnames(outer_temp) <- c("Date", "NO2", "PM10", "SO2", "Direction", "Speed")
+   data_storage[[i]] <- outer_temp
+   outer_temp <- NA
 }
 
 # Create train and test splits.
@@ -54,12 +65,12 @@ test <- data_storage[[2]]
 
 # Calculate the pairwise correlation between variables.
 cor_matrix <- train %>%
-   select(-DateTime) %>%
+   select(-Date) %>%
    cor(use = "na.or.complete", method = "pearson")
 corrplot(corr = cor_matrix, method = "color", type = "lower")
 
 # Scatter plot of the response variable.
-ggplot(data = train, mapping = aes(x = DateTime, y = NO2))+
+ggplot(data = train, mapping = aes(x = Date, y = NO2))+
    geom_point(color = "steelblue", size = 2, pch = 18)+
    theme_minimal()
 
