@@ -1,5 +1,6 @@
 \documentclass[a4paper, 10pt]{article}
 \usepackage{amsmath}
+\usepackage{amssymb}
 \usepackage[justification=raggedright,singlelinecheck=false]{caption}
 \usepackage{graphicx}
 \usepackage{float}
@@ -50,6 +51,33 @@
             \centering
             \begin{subfigure}[t]{0.48\linewidth}
                \centering
+               \includegraphics[width=\linewidth]{../images/PM10_hist_2019.png}
+               \caption{Histogram of $\text{PM}_{10}$.}
+            \end{subfigure}
+            \hfill
+            \begin{subfigure}[t]{0.48\linewidth}
+               \centering
+               \includegraphics[width=\linewidth]{../images/SO2_hist_2019.png}
+               \caption{Histogram of $\text{SO}_{2}$.}
+            \end{subfigure}
+            \vfill
+            \begin{subfigure}[t]{0.48\linewidth}
+               \centering
+               \includegraphics[width=\linewidth]{../images/direction_hist_2019.png}
+               \caption{Histogram of Direction.}
+            \end{subfigure}
+            \hfill
+            \begin{subfigure}[t]{0.48\linewidth}
+               \centering
+               \includegraphics[width=\linewidth]{../images/speed_hist_2019.png}
+               \caption{Histogram of Speed.}
+            \end{subfigure}
+         \end{figure}
+         
+         \begin{figure}[H]
+            \centering
+            \begin{subfigure}[t]{0.48\linewidth}
+               \centering
                \includegraphics[width=\linewidth]{../images/no2_scatter_2019.png}
                \caption{Scatter plot of $\text{NO}_{2}$.}
             \end{subfigure}
@@ -75,9 +103,13 @@
                \caption{Histogram of $log(\text{NO}_{2})$.}
             \end{subfigure}
          \end{figure}
-         Let $Y := \text{NO}_{2}$\\
-         $Y  \not\sim \mathcal{N}(\mu, \sigma)$\\
-         $log(Y) \sim \mathcal{N}(\mu, \sigma)$
+
+         Let $Y := \text{NO}_{2}$ levels in the atmosphere. 
+         Notice that $Y \not\sim \mathcal{N}(\mu, \, \sigma)$ but $log(Y) \dot{\sim} \mathcal{N}(\mu, \, \sigma)$.\\
+         Our Gaussian process is of the form $h(x) \sim \mathcal{N}(f(x), \, g(x)), \, x \in \mathbb{R}$.
+         The resultant covariance matrix of $g(x)$ must be positive semi-definite. 
+         Thus $g(x)$ must be chosen appropriately.
+         The proposed model for the mean function is $f(x) = \alpha + x^{T} \beta$.
    
    \section*{References}
       \begin{enumerate}
