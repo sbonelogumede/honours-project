@@ -1,0 +1,681 @@
+---
+title: "Forecasting Gold-ETF Prices with Gaussian Processes"
+author: ""
+format: html
+bibliography: references.bib
+csl: apa.csl # keeps citations consistent
+execute:
+  echo: true
+  warning: false
+  error: false
+editor: 
+  markdown: 
+    wrap: 72
+---
+
+##### Abstract \[ ≤300 words \]
+
+##### 1 Introduction
+
+##### 1.1 Motivation
+
+##### 1.2 Research questions & contributions
+
+##### 2 Literature review <!-- your pdf already drafted  -->
+
+##### 2.1 Gaussian Process theory
+
+##### 2.2 GPR in commodity & financial time-series
+
+##### 2.3 Competing methods (ARIMA, GARCH…)
+
+##### 3 Data
+
+##### 3.1 Gold-ETF & exogenous drivers
+
+##### 3.2 Exploratory analysis
+
+##### 4 Methodology
+
+##### 4.1 Pre-processing & stationarity tests
+
+##### 4.2 Model specification
+
+##### 4.2.1 Kernel families
+
+##### 4.2.2 Hyper-parameter learning
+
+##### 4.3 Benchmark (ARIMA)
+
+##### 4.4 Evaluation metrics
+
+##### 5 Results
+
+##### 5.1 Point forecasts
+
+##### 5.2 Uncertainty intervals
+
+##### 5.3 Rolling-window comparison
+
+##### 5.4 Discussion
+
+##### 6 Conclusion & future work
+
+```{r}
+# General
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(lubridate)
+
+# Time‑series & ARIMA
+library(forecast)
+library(tseries)
+
+# Gaussian Processes
+library(kernlab)
+
+# Bayesian GP via Stan (optional)
+library(cmdstanr)
+library(tidyverse)
+library(lubridate)
+library(forecast)
+library(tseries)
+library(kernlab)
+library(Metrics)
+```
+
+### 1. Data loading & initial inspection
+
+We start by importing the full Gold-ETF dataset, parsing the Date column
+as an R Date object, sorting chronologically, and quickly checking for
+missing values
+
+```{r}
+gold <- read_csv("FINAL_USO.csv") %>%
+  mutate(
+    Date = ymd(Date)
+  ) %>%
+  arrange(Date)
+glimpse(gold)
+summary(gold$Close)
+sum(is.na(gold))
+```
+
+if sum(is.na(.)) \> 0, decide whether to drop, impute, or carry-forward.
+Since markets don’t trade on weekends/holidays, you may not need to
+impute gaps in Close (Dickey & Fuller, 1979; Kwiatkowski et al., 1992).
+
+Here we quantify calendar days with no trading data. Weekends and public
+holidays will show up—but these are expected.
+
+### 2. missing-days analysis
+
+```{r}
+# 2.1 Missing trading days
+all_days <- seq(min(gold$Date), max(gold$Date), by="day")
+missing <- setdiff(all_days, gold$Date)
+length(missing)  # how many
+```
+
+side note: consider using the timeDate or bizdays package to generate a
+trading calendar instead of imputing
+
+### 3. One-year subset & time index
+
+To focus on recent dynamics, we extract the last 252 trading days (≈1
+year) and create a numeric time index t for our kernels.
+
+```{r}
+# One-year subset
+end_d <- max(gold$Date)
+start_d <- end_d - years(1)
+gold1yr <- gold %>% filter(Date >= start_d)
+
+#Time index
+gold1yr <- gold1yr %>%
+  mutate(t = as.numeric(Date - start_d), 
+         price = .data[["Close"]])
+
+# summary of our window
+tibble(
+  close_column = "Close",
+  start_date   = min(gold1yr$Date),
+  end_date     = max(gold1yr$Date),
+  n_rows       = nrow(gold1yr)
+)
+library(ggplot2)
+ggplot(gold1yr, aes(Date, Close)) +
+  geom_line(color="goldenrod") +
+  labs(title="Gold Closing Price (One Year)", x="Date", y="Close")
+
+```
+
+visualise the raw price distribution over our one-year window. Figure X
+shows that closing prices, with a slight right‐skew and a hint of
+multi‐modality (reflecting periods of relative calm punctuated by price
+run-ups)
+
+```{r}
+ggplot(gold1yr, aes(Close)) +
+  geom_histogram(aes(y = after_stat(density)),
+                 bins = 30,
+                 fill = "skyblue", alpha = 0.6) +
+  geom_density(color = "darkblue", size = 1) +
+  labs(
+    title = "Distribution of Closing Prices",
+    x     = "Close (USD/oz)",
+    y     = "Density"
+  ) +
+  theme_minimal()
+
+```
+
+Because this price series is clearly non-stationary (trending upward)
+and exhibits heteroskedasticity (variance increasing with level), we
+apply a log-transform and then difference to stabilise both the mean and
+the variance.
+
+```{r}
+# 1. Histogram + QQ–plot
+ggplot(na.omit(gold1yr), aes(x = logret)) +
+  geom_histogram(aes(y = after_stat(density)), bins = 40, fill = "lightblue", alpha=0.6) +
+  geom_density(color="darkblue") +
+  labs(title="Log-Return Distribution", x="logret", y="Density") +
+  theme_minimal()
+
+# QQ-plot
+qqnorm(na.omit(gold1yr$logret), main="QQ-Plot of Gold Log-Returns")
+qqline(na.omit(gold1yr$logret), col="red")
+
+```
+
+### 4. Stationarity & log-returns 
+
+In this chunk we prepare our target series and verify its stationarity
+before fitting any time‐series mode. We do the following:
+
+-   Variable creation: price is the raw closing price.
+
+-   logret is the daily log‐return, logret 𝑡 = ln ⁡ ( Close 𝑡 ) − ln ⁡ (
+    Close 𝑡 − 1 ) , which removes trend and often yields a stationary
+    series [@Rasmussen2006].
+
+Augmented Dickey–Fuller (ADF) tests We test both price and logret for a
+unit root. The ADF test’s null hypothesis is that the series is
+non‐stationary with a unit root [@Dickey1979].
+
+```{r}
+gold <- read_csv("FINAL_USO.csv", show_col_types = FALSE) %>%
+  mutate(Date = ymd(Date)) %>%
+  arrange(Date)
+
+end_d   <- max(gold$Date)
+start_d <- end_d - years(1)
+gold1yr <- gold %>%
+  filter(Date >= start_d) %>%
+  mutate(price = Close,
+         logret = c(NA, diff(log(Close))))
+
+# ── Stationarity tests ───────────────────────────────
+p_adf <- adf.test(na.omit(gold1yr$price),  k = 0)
+r_adf <- adf.test(na.omit(gold1yr$logret), k = 0)
+
+cat("Price ADF p-value:     ", p_adf$p.value, "\n",  # >0.05 → levels non-stationary
+    "Log-return ADF p-value:", r_adf$p.value, "\n")  # <0.05 → returns stationary
+
+```
+
+Price levels: ADF p ≈ 0.93 ⇒ fail to reject a unit root →
+non‐stationary.
+
+Log‐returns: ADF p ≈ 0.01 ⇒ reject a unit root at the 5 % level →
+(weakly) stationary.
+
+By modelling the stationary logret series, we satisfy the key assumption
+of Gaussian Processes (and ARIMA/GARCH) that the target is stable over
+time, leading to more robust hyper‐parameter estimation and forecasting
+performance [@AndradeGaleano2021; @Rasmussen2006].
+
+### 5. Visualize & quantify short-memory structure
+
+To decide how much past dependence to encode in our models, we examine
+the autocorrelation (ACF) and partial autocorrelation (PACF) of the
+daily log-returns. Financial returns typically exhibit at most a
+single-lag memory, guiding whether we need an AR(1) mean function or can
+assume zero mean in our Gaussian Process.
+
+```{r}
+# Extract stationary target
+ret <- na.omit(gold1yr$logret)
+
+# Plot ACF & PACF to see how many lags matter
+par(mfrow = c(1,2))
+acf(ret,  main = "ACF of Gold Log-Returns")
+pacf(ret, main = "PACF of Gold Log-Returns")
+par(mfrow = c(1,1))
+
+```
+
+if you see a significant spike at lag 1 in the ACF/PACF (which you
+typically do for financial returns), you might include a simple AR(1)
+mean function inside your GP or note that most serial dependence is very
+short-lived (Andrade & Galeano, 2021).
+
+Both the ACF and PACF show a single significant spike at lag 1, with
+autocorrelations decaying to zero thereafter. This confirms that
+`logret` is a short-memory process—well captured by an AR(1) or even a
+zero-mean model, freeing the GP covariance kernel to focus on non-linear
+and multi-scale structure \[\@BoxJenkins1976; \@AndradeGaleano2021\].
+
+### 6. Exogenous‐Driver Correlations
+
+Having confirmed that gold log-returns are a short-memory, stationary
+series, we now ask: which macro-financial covariates move in tandem with
+these returns? Identifying those with non‐trivial correlation helps us
+decide which exogenous inputs to feed into our Gaussian Process.
+
+```{r}
+# 6.a.)log-returns for each exogenous variable 
+exog_close <- c("SP_close", "DJ_close", "EU_Price", "USO_Close", "GDX_Close")
+
+driver_rets <- gold1yr %>%
+  select(Date, all_of(exog_close)) %>%
+  # apply diff(log(.)) down each column
+  mutate(across(-Date, ~ c(NA, diff(log(.))), 
+                .names = "{.col}_ret")) %>%
+  select(Date, ends_with("_ret")) %>%
+  drop_na()   # remove NA row ->1st row 
+```
+
+\*Now `driver_rets` holds daily log‐returns of S&P 500, Dow Jones,
+EUR/USD, USO, GDX.\*
+
+```{r}
+# 6.b.) Correlate Gold Returns with Driver Returns
+# 1. Build a single data.frame with aligned rows
+df_corr_rets <- gold1yr %>%
+  select(Date, logret) %>%
+  inner_join(driver_rets, by="Date") %>%
+  select(-Date)
+
+# 2. Compute the correlation matrix
+corr_mat_rets <- cor(df_corr_rets, use = "complete.obs")
+
+# 3. Visualize
+corrplot(corr_mat_rets,
+         method   = "number",
+         type     = "upper",
+         tl.col   = "black",
+         cl.pos   = "n",
+         main     = "Corr(log-returns, driver log-returns)")
+
+```
+
+The strongest co‐movement is between gold and the Gold Miners ETF
+(`GDX_Close_ret`), with r ≈ 0.80—reflecting miners’ sensitivity to
+spot‐gold shifts.
+
+The EUR–USD return (`EU_Price_ret`) also shows a substantial positive
+link (r ≈ 0.55), indicating that dollar weakness tends to lift gold.
+
+Although the S&P 500 and Dow Jones log-returns are almost perfectly
+correlated with each other, they exhibit virtually no relationship with
+gold (\|r\| \< 0.05), and crude-oil returns (`USO_Close_ret`) contribute
+only a weak signal (r ≈ 0.09)
+
+Accordingly, we choose `GDX_Close_ret` and `EU_Price_ret` (and, if
+desired, `USO_Close_ret` for a small oil‐price effect) as exogenous
+inputs in our Gaussian‐Process model.
+
+## point estimate GP (via kernlab?)
+
+### 7 Model specification & fitting
+
+Having settled on gold log‐returns as our stationary target and selected
+the top exogenous covariates, we now specify a composite
+Gaussian‐Process (GP) kernel to capture both smooth trends and rough
+shocks, plus measurement noise \[\@Rasmussen2006\].
+
+## 7.1 What we’re doing
+
+We now move from a “point-estimate” Gaussian Process (via `kernlab`) to
+a fully Bayesian GP in Stan. This allows us to infer all kernel
+hyper-parameters jointly with the noise scale, quantify posterior
+uncertainty over each, and propagate that into our forecast intervals.
+
+### Key ingredients
+
+1.  **Data**
+    -   **Inputs**:\
+        \[ \mathbf{x}\_i =
+        \bigl[t_i,\;\mathrm{EU\_Price\_ret}_i,\;\mathrm{GDX\_Close\_ret}_i\bigr].
+        \]\
+    -   **Target**:\
+        \[ y_i = \log(P_i) -
+        \log(P\_{i-1})\quad(\text{gold log-return}). \]\
+    -   **Reason**: we include the time index (t_i) to capture any
+        residual temporal structure, and the two driver returns because
+        they exhibited the highest stationary correlations with gold
+        returns (r≈0.55 and r≈0.80) in Section 6.
+2.  **Kernel**\
+    We use an additive kernel\
+    \[ k(\mathbf{x},\mathbf{x}') = k\_{\rm SE}(\mathbf{x},\mathbf{x}')
+    -   k\_{\rm M32}(\mathbf{x},\mathbf{x}')
+    -   k\_{\rm WN}(\mathbf{x},\mathbf{x}'),, \]\
+        where\
+    -   (k\_{\rm SE}) (squared-exponential) captures smooth, multi-week
+        trends [@Rasmussen2006 §4.2; @BrunoDias2018].\
+    -   (k\_{\rm M32}) (Matérn 3/2) captures jagged, day-to-day shocks
+        [@Rasmussen2006 §4.6; @AndradeGaleano2021].\
+    -   (k\_{\rm WN}) (white-noise) absorbs observation-level noise
+        [@Rasmussen2006 §2.2].
+
+By additive composition, each kernel component cleanly attributes
+variance to different timescales. The model can automatically allocate
+more weight to the SE part in calm markets or to the Matérn part during
+volatile episodes (marginal likelihood optimization \[\@Rasmussen2006,
+Ch.5\]).
+
+**Uncertainty quantification**\
+Including an explicit nugget term lets us estimate a noise variance
+ sigma^2 , reflecting true observational uncertainty in our posterior
+predictive intervals.
+
+1.  **Model**\
+    We place a zero-mean GP prior on the latent function and Gaussian
+    noise on observations:
+
+k(x,x′) = k\_{\rm SE}(x,x′) + k\_{\rm M32}(x,x′) + k\_{\rm WN}(x,x′)
+
+### 8 Benchmarking with ARIMA
+
+*To gauge the GP’s relative performance, we fit an ARIMA model to the
+same log‐return series and compare point‐forecast accuracy.*
+
+########DRAFT BELOW#################
+
+```{r}
+# Stationarity checks: price vs. log returns
+p_adf  <- try(adf.test(na.omit(gold1yr$price)),  silent = TRUE)
+p_kpss <- try(kpss.test(na.omit(gold1yr$price)), silent = TRUE)
+r_adf  <- try(adf.test(na.omit(gold1yr$logret)),  silent = TRUE)
+r_kpss <- try(kpss.test(na.omit(gold1yr$logret)), silent = TRUE)
+
+cat("\nPrice ADF:\n");  print(p_adf)
+cat("\nPrice KPSS:\n"); print(p_kpss)
+cat("\nLog-Return ADF:\n");  print(r_adf)
+cat("\nLog-Return KPSS:\n"); print(r_kpss)
+
+```
+
+3.  Exploratory Data Analysis 3.1 Closing Price over Time
+
+```{r}
+gold <- read_csv("FINAL_USO.csv") %>%
+  mutate(
+    Date = ymd(Date)
+  ) %>%
+  arrange(Date)
+head(gold)
+glimpse(gold)
+summary(gold$Close)
+
+
+
+# 2. Create log-returns and one-year subset
+end_date <- max(gold$Date)
+start_date <- end_date - years(1)
+
+gold_year <- gold %>%
+  filter(Date >= start_date) %>%
+  mutate(
+    logReturn = c(NA, diff(log(Close))),
+    t_year    = as.numeric(Date - start_date)
+  )
+glimpse(gold)
+# Convert and sort
+gold <- gold %>%
+  mutate(Date = ymd(Date)) %>%
+  arrange(Date)
+
+# Create numeric time index
+gold <- gold %>%
+  mutate(t = as.numeric(Date - min(Date)))
+
+#scale explanatory variables 
+
+exog_close <- c("SP_close", "DJ_close", "EG_close", "GDX_Close", "USO_Close", "EU_Price")
+
+names(gold)
+
+
+```
+
+```{r}
+# Summary stats
+summary_df <- tibble(
+  start_date = min(gold1yr$Date),
+  end_date   = max(gold1yr$Date),
+  n_days     = nrow(gold1yr),
+  mean       = mean(gold1yr$price, na.rm = TRUE),
+  sd         = sd(gold1yr$price,   na.rm = TRUE),
+  min        = min(gold1yr$price,  na.rm = TRUE),
+  q25        = quantile(gold1yr$price, 0.25, na.rm = TRUE),
+  median     = median(gold1yr$price,    na.rm = TRUE),
+  q75        = quantile(gold1yr$price, 0.75, na.rm = TRUE),
+  max        = max(gold1yr$price,  na.rm = TRUE)
+)
+summary_df
+
+
+# Missing calendar days (informational only; markets don't trade every day)
+all_days <- seq(min(gold1yr$Date), max(gold1yr$Date), by = "day")
+missing_calendar_days <- setdiff(all_days, gold1yr$Date)
+length(missing_calendar_days)
+
+```
+
+3.2 Distribution of Close
+
+```{r}
+ggplot(gold1yr, aes(Close)) +
+  geom_histogram(aes(y=after_stat(density)), bins=30, fill="skyblue", alpha=0.6) +
+  geom_density(color="darkblue") +
+  labs(title="Distribution of Closing Prices", x="Close", y="Density")
+
+```
+
+EDA
+
+```{r}
+ggplot(gold, aes(Date, Close)) +
+  geom_line() +
+  labs(
+    title = "Daily Gold Closing Price",
+    x = "Date", y = "Close (USD/oz)"
+  )
+```
+
+```{r}
+gold <- read_csv("FINAL_USO.csv") %>%
+  mutate(
+    Date = ymd(Date)
+  ) %>%
+  arrange(Date)
+# Identify and report missing trading days
+dates_full <- seq(min(gold$Date), max(gold$Date), by = "day")
+missing_dates <- setdiff(dates_full, gold$Date)
+message("Missing trading days: ", length(missing_dates))
+
+# 2. Create log-returns and one-year subset
+end_date <- max(gold$Date)
+start_date <- end_date - years(1)
+
+gold_year <- gold %>%
+  filter(Date >= start_date) %>%
+  mutate(
+    logReturn = c(NA, diff(log(Close))),
+    t_year    = as.numeric(Date - start_date)
+  )
+
+```
+
+```{r}
+# Plot of the one-year closing price
+ggplot(gold_year, aes(Date, Close)) +
+  geom_line() +
+  labs(
+    title = "Gold Closing Price: Last One-Year",
+    x = "Date", y = "Close (USD/oz)"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+# Compute daily log-returns
+gold <- gold %>%
+  arrange(Date) %>%
+  mutate(logReturn = c(NA, diff(log(Close))))
+
+# Histogram with density and normal overlay
+g <- ggplot(gold, aes(x = logReturn)) +
+  geom_histogram(aes(y = ..density..), bins = 50, fill = "lightblue", alpha = 0.6) +
+  geom_density(color = "darkblue") +
+  stat_function(
+    fun = dnorm,
+    args = list(
+      mean = mean(na.omit(gold$logReturn)),
+      sd   = sd(na.omit(gold$logReturn))
+    ),
+    color = "red", linetype = "dashed"
+  ) +
+  labs(
+    title = "Distribution of Daily Log-Returns",
+    x = "Log-Return", y = "Density"
+  ) +
+  theme_minimal()
+print(g)
+```
+
+```{r}
+tseries::jarque.bera.test(na.omit(gold$logReturn))
+```
+
+Auto-correlation Analysis
+
+```{r}
+# ACF and PACF of log-returns
+gold_ret <- na.omit(gold$logReturn)
+par(mfrow = c(1,2))
+acf(gold_ret, main = "ACF of Log-Returns")
+pacf(gold_ret, main = "PACF of Log-Returns")
+par(mfrow = c(1,1))
+```
+
+```{r}
+# Correlation among price, volume, and returns
+gold %>%
+  select(Open, High, Low, Close, Volume, logReturn) %>%
+  cor(use = "complete.obs") %>%
+  corrplot(method = "number", type = "lower")
+
+names(gold)
+```
+
+```{r}
+# 
+corr_vars <- c("Close", exog_close)
+
+#  correlation matrix
+corr_mat <- gold1yr %>%
+  select(all_of(corr_vars)) %>%
+  cor(use = "complete.obs")
+
+
+library(corrplot)
+corrplot(
+  corr_mat,
+  method = "number",    
+  type   = "upper",     
+  tl.cex = 0.8,         
+  number.cex = 0.9,     
+  col = colorRampPalette(c("red", "white", "blue"))(200)
+)
+```
+
+```{r}
+# single data.frame with aligned rows
+df_corr_rets <- gold1yr %>%
+  select(Date, logret) %>%
+  inner_join(driver_rets, by="Date") %>%
+  select(-Date)
+
+#  Compute the correlation matrix
+corr_mat_rets <- cor(df_corr_rets, use = "complete.obs")
+
+# Visualize
+corrplot(corr_mat_rets,
+         method   = "number",
+         type     = "upper",
+         tl.col   = "black",
+         cl.pos   = "n",
+         main     = "Corr(log-returns, driver log-returns)")
+# ── Define your driver columns ──────────────────────────────────
+exog_close <- c("SP_close", "DJ_close", "EU_Price",
+                "USO_Close", "GDX_Close")
+
+# ──  Build a correlation data frame ──────────────────────────────
+df_corr <- gold1yr %>%
+  select(logret, all_of(exog_close)) %>%  # logret + drivers
+  drop_na()                               
+
+# ── Compute the correlation matrix ──────────────────────────────
+corr_mat <- cor(df_corr, use = "complete.obs")
+
+
+corrplot(
+  corr_mat,
+  method   = "number",
+  type     = "upper",
+  tl.cex   = 0.8,
+  number.cex = 0.9,
+  col      = colorRampPalette(c("red","white","blue"))(200),
+  title    = "Corr(log-returns, drivers)"
+)
+
+```
+
+Now `driver_rets` holds daily log‐returns of S&P 500, Dow Jones,
+EUR/USD, USO, GDX.
+
+```{r}
+
+
+# exogenous variables
+exog_close <- c("SP_close", "DJ_close", "EU_Price", "USO_Close", "GDX_Close")
+
+driver_rets <- gold1yr %>%
+  select(Date, all_of(exog_close)) %>%
+  # apply diff(log(.)) down each column
+  mutate(across(-Date, ~ c(NA, diff(log(.))), 
+                .names = "{.col}_ret")) %>%
+  select(Date, ends_with("_ret")) %>%
+  drop_na()   # drop the first NA row
+
+# Build a single data.frame with aligned rows
+df_corr_rets <- gold1yr %>%
+  select(Date, logret) %>%
+  inner_join(driver_rets, by="Date") %>%
+  select(-Date)
+
+#correlation analysis 
+corr_mat_rets <- cor(df_corr_rets, use = "complete.obs")
+
+corrplot(corr_mat_rets,
+         method   = "number",
+         type     = "upper",
+         tl.col   = "black",
+         cl.pos   = "n",
+         main     = "Corr(log-returns, driver log-returns)")
+
+```
