@@ -17,14 +17,43 @@
 
    \maketitle
 
+   \begin{flushleft}
+   
    \section*{Introduction}
 
+   In this paper we hope to define what is a Gaussian process. How can you use a Gaussian process for time series analysis? Compare the peformance of a Gaussian process to other time series analysis models such as state-space models. An area of application included is predicting the level of air pollution in the Table View station in Cape Town for the year of 2019. Another area of application is predicting the gold price for South Africa for the year of 2020. This is done in a Bayesian framework in order to make probabilistic statements and obtain a predictive distribution for future forecasts.
+
+   \vspace{1em}
+
+   A Gaussian process is a stochastic process $\{X_{t} \}_{t \in \mathcal{I}}$, where the parameter space $\mathcal{I}$ and the state space $\mathcal{U}$ are real numbers. At each point $t \in \mathcal{I}$, the state $X_{t} \sim \mathcal{N}(f(t), \, g(t))$, where $f(t)$ is a mean function and $g(t)$ is the covariance function. Since $g(t)$ denotes the variance then it must be that $g(t) \geq 0 \, \forall \, t \in \mathcal{I}$. Consider a simple example where $f(t) = t + e, \, \text{where} \, e \sim \mathcal{N}(0, 1) \, \text{and} \, g(t) = \text{sin}^{2}(t) + 1$.
+   
+   \begin{figure}[H]
+            \raggedright
+            \includegraphics[width=0.48\linewidth]{../images/gp.png}
+            \caption{An example of a Gaussian process.}
+   \end{figure}
+
+   \vspace{1em}
+   
+   Usually in the literature people often use $f(t) = 0$ and $g(t) = \alpha^{2} \text{exp}(- \frac{1}{2} (\frac{|t_i - t_j|}{\rho})^2)$, where $\alpha$ and $\rho$ are hyperparameters. The latter is known as the squared-exponential kernel. Some kernel functions common in the literature are the following:
+
+   \vspace{1em}
+   
+   This is great to talk about theoretically but $\mathbb{R}$ is uncountable. Thus there is a need for us to use some object which is a bit more practical. Lucky for us, when you take a discrete set of points from a Gaussian process you obtain a Multivariate Normal distribution. Suppose we have $(t_{1}, ..., t_{n})$ from the index set of our Gaussian process. Then $\mathbf{x} \sim \mathcal{MVN}([f(t_{1}), ..., f(t_{n})], \, [g(t_{1}), ..., g(t_{n})])$.
+
+   \vspace{1em}
+   
+   There are two ways of modeling time series data. The first one is functional mapping y = f(x) + e, where y is the response variable, x is the explanatory variable, and e is typically white additive noise. The noise is assumed to be uncorrelated with one another. The second one is curve fitting, where x is often time and y is the response. Often, we work with random effects models $y_{i} = X_{i}^{T} \boldsymbol{\beta_{i}} + a_{i} + e_{i}$, where $X_{i}^{T} \boldsymbol{\beta_{i}}$ is the regression term, $a_{i}$ is the random effect term, and $e_{i}$ is the random variation.
+
+   \section*{Air pollution example}
+   \subsection*{Exploratory data analysis}
+   
       \begin{table}[H]
          \raggedright
          \renewcommand{\arraystretch}{1.3}
          \begin{tabularx}{\textwidth}{|l|l|X|l|}
          \hline
-         \text{Variable} & \text{Feature Name} & \text{Feature Description} & \text{Unit} \\
+         \text{Variable} & \text{Name} & \text{Description} & \text{Unit} \\
          \hline
          \(\text{NO}_{2}\) & Nitrogen dioxide & A harmful gas from vehicles and industry. & \(\mu\text{g}/\text{m}^{3}\) \\
          \hline
@@ -40,79 +69,39 @@
          \caption{Description of variables used in the analysis.}
       \end{table}
 
-      \subsection*{Exploratory Data Analysis}
-         \begin{figure}[H]
-            \raggedright
-            \includegraphics[width=0.48\linewidth]{../images/corrplot_2019.png}
-            \caption{Correlation plot of the variables.}
-         \end{figure}
+      \begin{figure}[H]
+         \raggedright
+         \includegraphics[width=0.48\linewidth]{../images/corrplot_2019.png}
+         \caption{Correlation plot of the variables.}
+      \end{figure}
 
-         \begin{figure}[H]
-            \centering
-            \begin{subfigure}[t]{0.48\linewidth}
-               \centering
-               \includegraphics[width=\linewidth]{../images/PM10_hist_2019.png}
-               \caption{Histogram of $\text{PM}_{10}$.}
-            \end{subfigure}
-            \hfill
-            \begin{subfigure}[t]{0.48\linewidth}
-               \centering
-               \includegraphics[width=\linewidth]{../images/SO2_hist_2019.png}
-               \caption{Histogram of $\text{SO}_{2}$.}
-            \end{subfigure}
-            \vfill
-            \begin{subfigure}[t]{0.48\linewidth}
-               \centering
-               \includegraphics[width=\linewidth]{../images/direction_hist_2019.png}
-               \caption{Histogram of Direction.}
-            \end{subfigure}
-            \hfill
-            \begin{subfigure}[t]{0.48\linewidth}
-               \centering
-               \includegraphics[width=\linewidth]{../images/speed_hist_2019.png}
-               \caption{Histogram of Speed.}
-            \end{subfigure}
-         \end{figure}
-         
-         \begin{figure}[H]
-            \centering
-            \begin{subfigure}[t]{0.48\linewidth}
-               \centering
-               \includegraphics[width=\linewidth]{../images/no2_scatter_2019.png}
-               \caption{Scatter plot of $\text{NO}_{2}$.}
-            \end{subfigure}
-            \hfill
-            \begin{subfigure}[t]{0.48\linewidth}
-               \centering
-               \includegraphics[width=\linewidth]{../images/no2_hist_2019.png}
-               \caption{Histogram of $\text{NO}_{2}$.}
-            \end{subfigure}
-         \end{figure}
+      Our response variable $\text{NO}_{2}$ appears to be moderately positively correlated with $\text{PM}_{10}$ and $\text{SO}_{2}$, weakly negatively correlated with Direction and moderately negatively correlated with Speed. These are not ideal explanatory variables since we typically would like them to be strongly correlated with the response variable. The explanatory variables are weekly correlated with one another, whether it be positive or negative correlation. This is ideal since some models do not work well with correlated explanatory variables, often leading to unstable point estimates and inflated standard errors.
 
-         \begin{figure}[H]
-            \centering
-            \begin{subfigure}[t]{0.48\linewidth}
-               \centering
-               \includegraphics[width=\linewidth]{../images/log_no2_scatter_2019.png}
-               \caption{Scatter plot of $log(\text{NO}_{2})$.}
-            \end{subfigure}
-            \hfill
-            \begin{subfigure}[t]{0.48\linewidth}
-               \centering
-               \includegraphics[width=\linewidth]{../images/log_no2_hist_2019.png}
-               \caption{Histogram of $log(\text{NO}_{2})$.}
-            \end{subfigure}
-         \end{figure}
+      \vspace{1em}
 
-         Let $Y := \text{NO}_{2}$ levels in the atmosphere. 
-         Notice that $Y \not\sim \mathcal{N}(\mu, \, \sigma)$ but $log(Y) \dot{\sim} \mathcal{N}(\mu, \, \sigma)$.\\
-         Our Gaussian process is of the form $h(x) \sim \mathcal{N}(f(x), \, g(x)), \, x \in \mathbb{R}$.
-         The resultant covariance matrix of $g(x)$ must be positive semi-definite. 
-         Thus $g(x)$ must be chosen appropriately.
-         The proposed model for the mean function is $f(x) = \alpha + x^{T} \beta$.
+      Before looking at the data. The proposed model for the mean function is $f(x) = x^{T} \beta + \alpha$ and $g(x) = \alpha^{2} \text{exp}(- \frac{1}{2} (\frac{|x_i - x_j|}{\rho})^2)$ for the covariance function. This allows us to capture the trend (if it exists) in the time series through regression. This also allows us to model a changing variance since it is likely that the levels of nitrogen in the atmosphere differ thoughout the seasons of the year.
+      
+      \begin{figure}[H]
+         \centering
+         \begin{subfigure}[t]{0.48\linewidth}
+            \centering
+            \includegraphics[width=\linewidth]{../images/no2_scatter_2019.png}
+            \caption{Scatter plot of $\text{NO}_{2}$.}
+         \end{subfigure}
+         \hfill
+         \begin{subfigure}[t]{0.48\linewidth}
+            \centering
+            \includegraphics[width=\linewidth]{../images/no2_hist_2019.png}
+            \caption{Histogram of $\text{NO}_{2}$.}
+         \end{subfigure}
+      \end{figure}
+
+      The mean appears to be constant, but the variance seems to be changing with time. Thus it is better if $f(x) = 0$ and $g(x) = \alpha^{2} \text{exp}(- \frac{1}{2} (\frac{|x_i - x_j|}{\rho})^2)$. The prior distributions of the exponantiated quadratic kernel are the following: $\alpha \sim \text{half-normal}(0, 1)$, $\rho \sim \mathcal{IG}(20, 10)$, and $\sigma \sim \text{half-normal}(0, 1)$. There is seasonality since regular patterns repeat for the seasons of the year. Random variation is present. However, there is no cyclical component present.
    
    \section*{References}
       \begin{enumerate}
          \item https://www.lung.org/clean-air/outdoors/what-makes-air-unhealthy/nitrogen-dioxide
       \end{enumerate}
+   
+   \end{flushleft}
 \end{document}
