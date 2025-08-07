@@ -187,6 +187,10 @@ ggplot(na.omit(gold1yr), aes(x = logret)) +
 qqnorm(na.omit(gold1yr$logret), main="QQ-Plot of Gold Log-Returns")
 qqline(na.omit(gold1yr$logret), col="red")
 
+##arima with trend 
+##GLM log(u)=XB + gaussian 
+
+
 ```
 
 ### 4. Stationarity & log-returns 
@@ -246,7 +250,7 @@ assume zero mean in our Gaussian Process.
 
 ```{r}
 # Extract stationary target
-ret <- na.omit(gold1yr$logret)
+ret <- na.omit(gold1yr$Close)
 
 # Plot ACF & PACF to see how many lags matter
 par(mfrow = c(1,2))
