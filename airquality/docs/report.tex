@@ -25,21 +25,51 @@
 
    \vspace{1em}
 
-   A Gaussian process is a stochastic process $\{X_{t} \}_{t \in \mathcal{I}}$, where the parameter space $\mathcal{I}$ and the state space $\mathcal{U}$ are real numbers. At each point $t \in \mathcal{I}$, the state $X_{t} \sim \mathcal{N}(f(t), \, g(t))$, where $f(t)$ is a mean function and $g(t)$ is the covariance function. Since $g(t)$ denotes the variance then it must be that $g(t) \geq 0 \, \forall \, t \in \mathcal{I}$. Consider a simple example where $f(t) = t + e, \, \text{where} \, e \sim \mathcal{N}(0, 1) \, \text{and} \, g(t) = \text{sin}^{2}(t) + 1$.
+   A Gaussian process is a stochastic process $\{X_{t} \}_{t \in \mathcal{I}}$, where the parameter space $\mathcal{I}$ and the state space $\mathcal{U}$ are real numbers. At each point $t \in \mathcal{I}$, the state $X_{t} \sim \mathcal{N}(f(t), \, g(t))$, where $f(t)$ is a mean function and $g(t)$ is the variance function. Since $g(t)$ denotes the variance then it must be that $g(t) \geq 0 \, \forall \, t \in \mathcal{I}$. Consider a simple example shown in figure 1, where $f(t) = t + e, \, \text{where} \, e \sim \mathcal{N}(0, 1) \, \text{and} \, g(t) = \text{sin}^{2}(t) + 1$.
    
    \begin{figure}[H]
             \raggedright
             \includegraphics[width=0.48\linewidth]{../images/gp.png}
             \caption{An example of a Gaussian process.}
    \end{figure}
+   
+   We defined $g(t)$ as being a univariate non-negative function of the variance over time. We can generalize this to a function of the covariance over time. Simply we consider two points $t_{i} \, \text{and} \, t_{j}, \, \text{for} \, i \, \text{and} \, j \in \{1, \, \ldots, \, p\} \, \text{such that} \, g(t_{i}, \, t_{j})$ gives us the covariance between the two points. Consider a countable finite set of points of the parameter space $\{t_{1}, \, \ldots, \, t_{p}\}$. Each $X_{t_{k}} \sim \mathcal{N}(f(t_{k}), \, g(t_{k})), \, \text{for} \, k \in \{1,\, \ldots,\, p\}$.
+
+   $
+   \text{Thus}
+   \:
+   \mathbf{X} =
+   \begin{bmatrix}
+      X_{t_{1}} \\
+      \vdots \\
+      X_{t_{p}}
+   \end{bmatrix}
+   \:
+   \sim \mathcal{N}_{p}(\boldsymbol{\mu}, \, \boldsymbol{\Sigma}),
+   \:
+   \text{where}
+   \:
+   \boldsymbol{\mu} = 
+   \begin{bmatrix}
+      f(t_{1}) \\
+      f(t_{2}) \\
+      \vdots \\
+      f(t_{p})
+   \end{bmatrix}  
+   \: 
+   \text{and}
+   \:
+   \boldsymbol{\Sigma} = 
+   \begin{bmatrix}
+      g(t_{1}, \, t_{1}) & g(t_{1}, \, t_{2}) & \cdots g(t_{1}, \, t_{p}) \\
+      g(t_{2}, \, t_{1}) & g(t_{2}, \, t_{2}) & \cdots g(t_{2}, \, t_{p}) \\
+      \vdots & \ddots & \vdots \\
+      g(t_{p}, \, t_{1}) & g(t_{p}, \, t_{2}) & \cdots g(t_{p}, \, t_{p})
+   \end{bmatrix}$.
 
    \vspace{1em}
    
-   Usually in the literature people often use $f(t) = 0$ and $g(t) = \alpha^{2} \text{exp}(- \frac{1}{2} (\frac{|t_i - t_j|}{\rho})^2)$, where $\alpha$ and $\rho$ are hyperparameters. The latter is known as the squared-exponential kernel. Some kernel functions common in the literature are the following:
-
-   \vspace{1em}
-   
-   This is great to talk about theoretically but $\mathbb{R}$ is uncountable. Thus there is a need for us to use some object which is a bit more practical. Lucky for us, when you take a discrete set of points from a Gaussian process you obtain a Multivariate Normal distribution. Suppose we have $(t_{1}, ..., t_{n})$ from the index set of our Gaussian process. Then $\mathbf{x} \sim \mathcal{MVN}([f(t_{1}), ..., f(t_{n})], \, [g(t_{1}), ..., g(t_{n})])$.
+   Often in the literature people use $f(t) = 0$ and $g(t_{i}, \, t_{j}) = \alpha^{2} \text{exp}(- \frac{1}{2} (\frac{|t_i - t_j|}{\rho})^2)$, where $\alpha$ and $\rho$ are hyperparameters. The latter is known as the squared-exponential kernel. Some kernel functions common in the literature are the following:
 
    \vspace{1em}
    
