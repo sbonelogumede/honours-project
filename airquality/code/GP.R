@@ -15,7 +15,7 @@ g <- function(x){
 	(sin(x))^2 + 1
 }
 
-png(filename = "../images/gp.png", width = 8, height = 6, res = 600, units = "in")
+#png(filename = "../images/gp.png", width = 8, height = 6, res = 600, units = "in")
 
 plot(x = 0, 
 	  y = 0, 
@@ -41,4 +41,4 @@ for(x in x_seq){
 	lines(x = x_scaled, y = y_dens$x, col = "steelblue", lwd = 2)
 }
 
-dev.off()
+#dev.off()

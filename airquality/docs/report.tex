@@ -11,7 +11,9 @@
 
 \title{Gaussian Processes for Time Series}
 \date{\today}
-\author{Raphaela Azar and Sbonelo Gumede}
+\author{Raphaela Azar and Sbonelo Gumede \\
+Supervised by Prof. Birgit Erni\\
+The University of Cape Town}
 
 \begin{document}
 
@@ -73,7 +75,11 @@
 
    \vspace{1em}
    
-   There are two ways of modeling time series data. The first one is functional mapping y = f(x) + e, where y is the response variable, x is the explanatory variable, and e is typically white additive noise. The noise is assumed to be uncorrelated with one another. The second one is curve fitting, where x is often time and y is the response. Often, we work with random effects models $y_{i} = X_{i}^{T} \boldsymbol{\beta_{i}} + a_{i} + e_{i}$, where $X_{i}^{T} \boldsymbol{\beta_{i}}$ is the regression term, $a_{i}$ is the random effect term, and $e_{i}$ is the random variation.
+   There are two ways of modeling time series data. The first one is functional mapping $y = f(x) + e$, where $y$ is the response variable, $x$ is the explanatory variable, and $e$ is typically white additive noise. The noise is assumed to be uncorrelated with one another. Although the simplicity of functional mapping is attractive, functional mapping neglects the time component rendering it useless for our purposes. The second one is curve fitting, where $x$ is often time and $y$ is the response variable. This is ideal for our purposes since we are accounting for the time dependence between successive observations. 
+
+   \vspace{1em}
+   
+   Often, we work with random effects models $y_{i} = X_{i}^{T} \boldsymbol{\beta_{i}} + a_{i} + e_{i}$, where $X_{i}^{T} \boldsymbol{\beta_{i}}$ is the regression term, $a_{i}$ is the random effect term, and $e_{i}$ is the random variation.
 
    \section*{Air pollution example}
    \subsection*{Exploratory data analysis}
