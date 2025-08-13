@@ -79,9 +79,9 @@ The University of Cape Town}
    \section*{Air pollution example}
    \subsection*{Exploratory data analysis}
    
-      \begin{table}[H]
+      \begin{table}[ht]
          \raggedright
-         \begin{tabularx}{\textwidth}{|l|l|X|l|}
+         \begin{tabularx}{0.80\textwidth}{|l|l|X|l|}
          \hline
          \text{Variable} & \text{Name} & \text{Description} & \text{Unit} \\
          \hline
@@ -94,20 +94,40 @@ The University of Cape Town}
          Speed & Wind speed & How fast the wind is moving. & m/s \\
          \hline
          \end{tabularx}
-         \caption{Description of variables used in the analysis.}
+         \caption{Description of variables of the air pollution dataset.}
+         \label{tab:variable_description}
+      \end{table}
+
+      \begin{table}[ht]
+         \raggedright
+         \begin{tabularx}{0.7325\textwidth}{|l|r|r|r|r|r|r|r|r|}
+            \hline
+            Variable & Min. & 1st Qu. & Median & Mean & Std. & 3rd Qu. & Max. & NA's \\
+            \hline
+            NO$_2$   & 0.0 & 5.0  & 9.0  & 12.73 & 10.72 & 17.0 & 113.0 & 734 \\
+            \hline
+            PM$_{10}$ & 0.0 & 12.0 & 17.0 & 19.82 & 12.30 & 24.0 & 158.0 & 298 \\
+            \hline
+            SO$_2$   & 0.0 & 2.0  & 3.0  & 6.20  & 11.30 & 5.0  & 142.0 & 638 \\
+            \hline
+            Speed    & 0.5 & 2.3  & 3.6  & 3.74  & 1.71  & 4.9  & 11.2  & 918 \\
+            \hline
+         \end{tabularx}
+         \caption{Summary statistics of the air pollution dataset.}
+         \label{tab:summary_statistics}
       \end{table}
 
       \begin{figure}[H]
          \raggedright
          \includegraphics[width=0.48\linewidth]{../images/corrplot_2019.png}
-         \caption{Correlation plot of the variables.}
+         \caption{Correlation plot of the air pollution dataset.}
       \end{figure}
 
       Our response variable $\text{NO}_{2}$ appears to be moderately positively correlated with $\text{PM}_{10}$ and $\text{SO}_{2}$, and moderately negatively correlated with Speed. These are not ideal explanatory variables since we typically would like them to be strongly correlated with the response variable. The explanatory variables are weekly correlated with one another, whether it be positive or negative correlation. This is ideal since some models do not work well with correlated explanatory variables, often leading to unstable point estimates and inflated standard errors.
 
       \vspace{1em}
 
-      Before looking at the data. The proposed model for the mean function is $f(x_{t}) = x_{t}^{T} \beta + e$ and $g(x_{i}, x_{j}) = \alpha^{2} \text{exp}(- \frac{1}{2} (\frac{|x_i - x_j|}{\rho})^2) + \sigma\delta_{ij} \, \text{for} \, i,j \in \mathcal{I}$ for the covariance function. This allows us to capture the trend (if it exists) in the time series. This also allows us to model the correlation structure of the data. The squared exponential kernel is chosen because it is a natural way of describing the correlation decay.
+      Before looking at the data. The proposal mean function is $f(x_{t}) = x_{t}^{T} \beta + e$ and the proposal covariance function is $g(x_{i}, x_{j}) = \alpha^{2} \text{exp}(- \frac{1}{2} (\frac{|x_i - x_j|}{\rho})^2) + \sigma\delta_{ij} \, \text{for} \, i,j \in \mathcal{I}$. This allows us to capture the trend (if it exists) in the time series. This also allows us to capture the correlation structure of the data. The squared-exponential kernel is chosen because it is a natural way of describing the correlation decay.
 
       \begin{figure}[H]
          \centering
@@ -160,7 +180,7 @@ The University of Cape Town}
          \end{subfigure}
       \end{figure}
 
-      The mean appears to be constant, but the variance seems to be changing with time. Thus it is better if $f(x) = 0$ and $g(x) = \alpha^{2} \text{exp}(- \frac{1}{2} (\frac{|x_i - x_j|}{\rho})^2)$. The prior distributions of the exponantiated quadratic kernel are the following: $\alpha \sim \text{half-normal}(0, 1)$, $\rho \sim \mathcal{IG}(20, 10)$, and $\sigma \sim \text{half-normal}(0, 1)$. There is seasonality since regular patterns repeat for the seasons of the year. Random variation is present. However, there is no cyclical component present.
+      The prior distributions of the exponantiated quadratic kernel are the following: $\alpha \sim \text{half-normal}(0, 1)$, $\rho \sim \mathcal{IG}(20, 10)$, and $\sigma \sim \text{half-normal}(0, 1)$. Based on eye-balling the data. There is no clear long term trend. There is seasonality since regular patterns repeat for the four seasons of the year. However, there is no cyclical component present. Random variation is present.
    
    \section*{References}
       \begin{enumerate}

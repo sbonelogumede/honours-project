@@ -11,6 +11,18 @@ var_name <- c("DateTime", "NO2", "PM10", "SO2", "Speed")
 x_name <- c("DateTime", expression(NO[2]), expression(PM[10]), expression(SO[2]), expression(Speed))
 color_name <- c("lightskyblue", "lightseagreen", "palegreen", "plum3", "lightsalmon", "khaki2")
 
+# Summary statistics.
+summary_table <- rbind("Min."=sapply(X=train, FUN=min, na.rm=TRUE),
+                       "1st Qu."=sapply(X=train, FUN=quantile, 0.25, na.rm=TRUE),
+                       "Median"=sapply(X=train, FUN=median, na.rm=TRUE),
+                       "Mean"=sapply(X=train, FUN=mean, na.rm=TRUE),
+                       "Std."=sapply(X=train, FUN=sd, na.rm=TRUE),
+                       "3rd Qu."=sapply(X=train, FUN=quantile, 0.75, na.rm=TRUE),
+                       "Max."=sapply(X=train, FUN=max, na.rm=TRUE),
+                       "NA's"=sapply(X=train, FUN=function(column) sum(is.na(column))))
+summary_statistics <- round(x=t(x=summary_table[, 2:5]), digits=2)
+summary_statistics
+
 # Correlation plot.
 png(filename="../images/corrplot_2019.png", width=8, height=6, res=600, units="in")
 cor_matrix <- train %>% select(-DateTime) %>% cor(use="na.or.complete", method="pearson")
@@ -28,11 +40,11 @@ for(i in 2:5){
    
    # Histogram plot.
    png(filename=filename1, width=8, height=6, res=600, units="in")
-   hist(x=x, col=color_name[i-1], main=main_hist, xlab=x_name[i], breaks=30, freq=F)
-   abline(v=mean(x=x, na.rm=T), col="red", lwd=3)
-   abline(v=median(x=x, na.rm=T), col="black", lwd=3)
-   abline(v=mean(x=x, na.rm=T) - sd(x=x, na.rm=T), col="hotpink", lwd=3)
-   abline(v=mean(x=x, na.rm=T) + sd(x=x, na.rm=T), col="hotpink", lwd=3)
+   hist(x=x, col=color_name[i-1], main=main_hist, xlab=x_name[i], breaks=30, freq=FALSE)
+   abline(v=mean(x=x, na.rm=TRUE), col="red", lwd=3)
+   abline(v=median(x=x, na.rm=TRUE), col="black", lwd=3)
+   abline(v=mean(x=x, na.rm=TRUE) - sd(x=x, na.rm=T), col="hotpink", lwd=3)
+   abline(v=mean(x=x, na.rm=TRUE) + sd(x=x, na.rm=T), col="hotpink", lwd=3)
    legend(x="topright", legend=c("Mean" , "Median", "Standard deviation"), 
           col=c("red", "black", "hotpink"), lwd=3)
    dev.off()
