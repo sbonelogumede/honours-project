@@ -181,6 +181,32 @@ The University of Cape Town}
       \end{figure}
 
       The prior distributions of the exponantiated quadratic kernel are the following: $\alpha \sim \text{half-normal}(0, 1)$, $\rho \sim \mathcal{IG}(20, 10)$, and $\sigma \sim \text{half-normal}(0, 1)$. Based on eye-balling the data. There is no clear long term trend. There is seasonality since regular patterns repeat for the four seasons of the year. However, there is no cyclical component present. Random variation is present.
+
+      \subsection*{Components of the time series}
+
+      \begin{figure}[H]
+         \raggedright
+         \includegraphics[width=\linewidth]{../images/no2_ts_2019.png}
+         \caption{Time series plot of $\text{NO}_{2}$.}
+      \end{figure}
+
+      This time series is not statationary. The mean and variance are changing with time. There is a need for a variance stabilizing transformation. Also possibly first-order differencing. The ACF slowly decays to 0, but the PACF shuts off abruptly after lag 2. Hence, an AR(2) model may be the appropriate order of AR model to fit the data. So we would fit an ARIMA(p=2, d, q) and then fit some other ARIMA(p, d, q) models e.g., ARIMA(p=1, d=1, q=1) and then compare the models with AIC.
+
+      \begin{figure}[H]
+         \raggedright
+         \includegraphics[width=\linewidth]{../images/log_no2_ts_2019.png}
+         \caption{Time series plot of $ln(\text{NO}_{2})$.}
+      \end{figure}
+
+      The time series is not yet stationary since the mean is changing with time. First-order differencing is needed in order to remove the trend.
+
+      \begin{figure}[H]
+         \raggedright
+         \includegraphics[width=\linewidth]{../images/diff_log_no2_ts_2019.png}
+         \caption{Time series plot of first-order differenced $ln(\text{NO}_{2})$.}
+      \end{figure}
+
+      Notice that the time series is now stationary. The mean and variance are not changing with time. Thus we only need to account for the mean and variance in our models.
    
    \section*{References}
       \begin{enumerate}
