@@ -8,7 +8,7 @@ g <- function(x){
 	1 + (sin(x))^2
 }
 
-png(filename="../images/gp.png", width=8, height=6, res=600, units="in")
+png(filename="../img/gp.png", width=8, height=6, res=600, units="in")
 plot(x=0, y=0, xlim=c(0, 55), ylim=c(0, 55), main="", xlab="t", ylab=expression(X[t]), type="n")
 x_seq <- seq(from=1, to=50, length.out=11)
 

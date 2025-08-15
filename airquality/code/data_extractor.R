@@ -45,4 +45,4 @@ for(i in 1:2){
 	outer_temp <- NA
 }
 
-save(data_storage, file="../objects/data_storage.RData")
+save(data_storage, file="../object/data_storage.RData")

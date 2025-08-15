@@ -3,9 +3,8 @@ require(package="dplyr")
 require(package="ggplot2")
 require(package="zoo")
 
-load(file="../objects/data_storage.RData")
+load(file="../object/data_storage.RData")
 train <- data_storage[[1]]
-test <- data_storage[[2]]
 
 var_name <- c("DateTime", "NO2", "PM10", "SO2", "Speed")
 x_name <- c("DateTime", expression(NO[2]), expression(PM[10]), expression(SO[2]), expression(Speed))
@@ -24,7 +23,7 @@ summary_statistics <- round(x=t(x=summary_table[, 2:5]), digits=2)
 summary_statistics
 
 # Correlation plot.
-png(filename="../images/corrplot_2019.png", width=8, height=6, res=600, units="in")
+png(filename="../img/corrplot_2019.png", width=8, height=6, res=600, units="in")
 cor_matrix <- train %>% select(-DateTime) %>% cor(use="na.or.complete", method="pearson")
 corrplot(corr=cor_matrix, method="number", type="lower")
 dev.off()
@@ -35,8 +34,8 @@ for(i in 2:5){
    main_hist <- bquote(.("Histogram of") ~ .(x_name[[i]]))
    main_scatter <- bquote(.("Scatter plot of") ~ .(x_name[[i]]))
    
-   filename1 <- paste0("../images/", tolower(x=var_name[i]), "_hist_2019.png")
-   filename2 <- paste0("../images/", tolower(x=var_name[i]), "_scatter_2019.png")
+   filename1 <- paste0("../img/", tolower(x=var_name[i]), "_hist_2019.png")
+   filename2 <- paste0("../img/", tolower(x=var_name[i]), "_scatter_2019.png")
    
    # Histogram plot.
    png(filename=filename1, width=8, height=6, res=600, units="in")

@@ -3,7 +3,7 @@ require(package="parallel")
 require(package="rstan")
 require(package="zoo")
 
-load(file="../objects/data_storage.RData")
+load(file="../object/data_storage.RData")
 train <- data_storage[[1]]
 test <- data_storage[[2]]
 
