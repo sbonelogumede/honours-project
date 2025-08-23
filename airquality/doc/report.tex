@@ -2,9 +2,11 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage[justification=raggedright,singlelinecheck=false]{caption}
+\usepackage[top=1in, bottom=1in, left=1.25in, right=1in]{geometry}
 \usepackage{graphicx}
 \usepackage{float}
-\usepackage[top=1in, bottom=1in, left=1.25in, right=1in]{geometry}
+\usepackage{multirow}
+\usepackage[table]{xcolor}
 \usepackage{hyperref}
 \usepackage{subcaption}
 \usepackage{tabularx}
@@ -20,7 +22,7 @@ The University of Cape Town}
    \maketitle
 
    \begin{flushleft}
-   
+
    \section*{Introduction}
 
    In this paper we hope to define what is a Gaussian process. How can you use a Gaussian process for time series analysis? Compare the peformance of a Gaussian process to other time series analysis models such as state-space models. An area of application included is predicting the level of air pollution in the Table View station in Cape Town for the year of 2019. Another area of application is predicting the gold price for South Africa for the year of 2020. This is done in a Bayesian framework in order to make probabilistic statements and obtain a predictive distribution for future forecasts.
@@ -28,13 +30,13 @@ The University of Cape Town}
    \vspace{1em}
 
    A Gaussian process is a stochastic process denoted by $\{X_{t} \}_{t \in \mathcal{I}}$, where the parameter space $\mathcal{I}$ and the state space $\mathcal{U}$ are real numbers. 
-   At each point $t \in \mathcal{I}$, the state $X_{t} \sim \mathcal{N}(f(x_{t}), \, g(x_{t}))$, where $f(x_{t})$ is a mean function and $g(x_{t}) \geq 0$ is the covariance function.  
-   Consider a simple example shown in figure 1, where $f(x_{t}) = x_{t} + e, \, \text{where} \, e \sim \mathcal{N}(0, 1) \, \text{and} \, g(x_{t}) = 1 + \text{sin}^{2}(x_{t})$.
+   At each point $t \in \mathcal{I}$, the state $X_{t} \sim \mathcal{N}(f(x_{t}), \, g(x_{t}, \, x_{t}))$, where $f(x_{t})$ is a mean function and $g(x_{t}, \, x_{t}) \geq 0$ is the covariance function.  
+   Consider a simple example shown in figure 1, where $f(x_{t}) = x_{t} \, \text{and} \, g(x_{t}, \, x_{t}) = 1$.
    
    \begin{figure}[H]
       \centering
       \includegraphics[width=0.48\linewidth]{../img/gp.png}
-      \caption{An example of a Gaussian process.}
+      \caption{\textit{An example of a Gaussian process on $\{0, 10, \ldots, 100\}$.}}
    \end{figure}
    
    A special property of Gaussian processes is that if you take a countable finite set of observations $\{x_{1}, \, \ldots, \, x_{p}\}$ their joint distribution is 
@@ -91,7 +93,7 @@ The University of Cape Town}
          Speed & Wind speed & How fast the wind is moving. & m/s \\
          \hline
          \end{tabularx}
-         \caption{Description of variables of the air pollution dataset.}
+         \caption{\textit{Description of variables of the air pollution dataset.}}
          \label{tab:variable_description}
       \end{table}
 
@@ -107,14 +109,14 @@ The University of Cape Town}
             Speed    & 0.5 & 2.3  & 3.6  & 3.74  & 1.71  & 4.9  & 11.2  & 918 \\
             \hline
          \end{tabularx}
-         \caption{Summary statistics of the air pollution dataset.}
+         \caption{\textit{Summary statistics of the air pollution dataset.}}
          \label{tab:summary_statistics}
       \end{table}
 
       \begin{figure}[H]
          \centering
-         \includegraphics[width=0.48\linewidth]{../img/corrplot_2019.png}
-         \caption{Correlation plot of the air pollution dataset.}
+         \includegraphics[width=0.48\linewidth]{../img/corrplot.png}
+         \caption{\textit{Correlation plot of the air pollution dataset.}}
       \end{figure}
 
       Our response variable $\text{NO}_{2}$ appears to be moderately positively correlated with $\text{PM}_{10}$ and $\text{SO}_{2}$, and moderately negatively correlated with Speed. These are not ideal explanatory variables since we typically would like them to be strongly correlated with the response variable. The explanatory variables are weekly correlated with one another, whether it be positive or negative correlation. This is ideal since some models do not work well with correlated explanatory variables, often leading to unstable point estimates and inflated standard errors.
@@ -123,101 +125,114 @@ The University of Cape Town}
 
       Before looking at the data. The proposal mean function is $f(x_{t}) = x_{t}^{T} \beta + e$ and the proposal covariance function is $g(x_{i}, x_{j}) = \alpha^{2} \text{exp}(- \frac{1}{2} (\frac{|x_i - x_j|}{\rho})^2) + \sigma\delta_{ij} \, \text{for} \, i,j \in \mathcal{I}$. This allows us to capture the trend (if it exists) in the time series. This also allows us to capture the correlation structure of the data. The squared-exponential kernel is chosen because it is a natural way of describing the correlation decay.
 
-      \begin{figure}[H]
-         \centering
-         \begin{subfigure}[t]{0.48\linewidth}
-            \centering
-            \includegraphics[width=\linewidth]{../img/no2_scatter_2019.png}
-         \end{subfigure}
-         \hfill
-         \begin{subfigure}[t]{0.48\linewidth}
-            \centering
-            \includegraphics[width=\linewidth]{../img/pm10_scatter_2019.png}
-         \end{subfigure}
-
-         \vfill
-
-         \begin{subfigure}[t]{0.48\linewidth}
-            \centering
-            \includegraphics[width=\linewidth]{../img/so2_scatter_2019.png}
-         \end{subfigure}
-         \hfill
-         \begin{subfigure}[t]{0.48\linewidth}
-            \centering
-            \includegraphics[width=\linewidth]{../img/speed_scatter_2019.png}
-         \end{subfigure}
-      \end{figure}
-
-
-      \begin{figure}[H]
-         \centering
-         \begin{subfigure}[t]{0.48\linewidth}
-            \centering
-            \includegraphics[width=\linewidth]{../img/no2_hist_2019.png}
-         \end{subfigure}
-         \hfill
-         \begin{subfigure}[t]{0.48\linewidth}
-            \centering
-            \includegraphics[width=\linewidth]{../img/pm10_hist_2019.png}
-         \end{subfigure}
-
-         \vfill
-
-         \begin{subfigure}[t]{0.48\linewidth}
-            \centering
-            \includegraphics[width=\linewidth]{../img/so2_hist_2019.png}
-         \end{subfigure}
-         \hfill
-         \begin{subfigure}[t]{0.48\linewidth}
-            \centering
-            \includegraphics[width=\linewidth]{../img/speed_hist_2019.png}
-         \end{subfigure}
-      \end{figure}
+      \vspace{1em}
 
       The prior distributions of the exponantiated quadratic kernel are the following: $\alpha \sim \text{half-normal}(0, 1)$, $\rho \sim \mathcal{IG}(20, 10)$, and $\sigma \sim \text{half-normal}(0, 1)$.
 
-      \subsection*{Components of the time series}
-
       \begin{figure}[H]
          \centering
-         \includegraphics[width=\linewidth]{../img/no2_ts_2019.png}
-         \caption{Time series plot of $\text{NO}_{2}$.}
-      \end{figure}
-
-      This time series is not statationary. The mean and variance are changing with time. There is a need for a variance stabilizing transformation. Also possibly first-order differencing. The ACF slowly decays to 0, but the PACF shuts off abruptly after lag 2. Hence, an AR(2) model may be the appropriate order of AR model to fit the data. So we would fit an ARIMA(p=2, d, q) and then fit some other ARIMA(p, d, q) models e.g., ARIMA(p=1, d=1, q=1) and then compare the models with AIC.
-
-      \begin{figure}[H]
-         \centering
-         \includegraphics[width=\linewidth]{../img/log_no2_ts_2019.png}
-         \caption{Time series plot of $ln(\text{NO}_{2})$.}
-      \end{figure}
-
-      The time series is not yet stationary since the mean is changing with time. First-order differencing is needed in order to remove the trend.
-
-      \begin{figure}[H]
-         \centering
-         \includegraphics[width=\linewidth]{../img/diff_log_no2_ts_2019.png}
-         \caption{Time series plot of first-order differenced $ln(\text{NO}_{2})$.}
-      \end{figure}
-
-      Notice that the time series is now stationary. The mean and variance are not changing with time. Thus we only need to account for the mean and variance in our models.
-   
-      \subsection*{Results}
-         \begin{table}[H]
+         \begin{subfigure}{0.48\linewidth}
             \centering
-            \begin{tabularx}{\textwidth}{|l|X|X|X|X|X|}
-               \hline
-               Horizon (hours) & Average & Naive & SNaive & Drift & ARIMA \\
-               \hline
-               1    & 8.79  & 1.00  & 4.00  & 1.00  & 0.44  \\
-               24   & 8.61  & 1.35  & 3.72  & 1.35  & 3.76  \\
-               168  & 7.16  & 5.58  & 5.71  & 5.59  & 15.57 \\
-               720  & 6.62  & 7.10  & 7.21  & 7.16  & 48.61 \\
-               \hline
-            \end{tabularx}
-            \caption{RMSE values on the test set for different forecasting methods and horizons.}
-            \label{tab:rmse_test_set}
-         \end{table}
+            \includegraphics[width=\linewidth]{../img/raw_no2.png}
+         \caption{Nitrogen dioxide}
+         \end{subfigure}
+         \hfill
+         \begin{subfigure}{0.48\linewidth}
+            \centering
+            \includegraphics[width=\linewidth]{../img/raw_pm10.png}
+            \caption{Particulate matter 10}
+         \end{subfigure}
+         
+         \vspace{0.5em}
+
+         \begin{subfigure}{0.48\linewidth}
+            \centering
+            \includegraphics[width=\linewidth]{../img/raw_so2.png}
+         \caption{Sulphur dioxide}
+         \end{subfigure}
+         \hfill
+         \begin{subfigure}{0.48\linewidth}
+            \centering
+            \includegraphics[width=\linewidth]{../img/raw_speed.png}
+            \caption{Wind speed}
+         \end{subfigure}
+
+         \caption{\textit{Time-series plots of nitrogen dioxide and mereorological processes from 01/01/2018 to 31/12/2019 measured hourly. Similar cyclic patterns can be observed in the meteorological processes, and a weaker seasonality component can be noted in the yearly nitrogen dioxide processes.}}
+      \end{figure}
+
+      \begin{figure}[H]
+         \centering
+         \begin{subfigure}{0.48\linewidth}
+            \centering
+            \includegraphics[width=\linewidth]{../img/scaled_no2.png}
+         \caption{Nitrogen dioxide}
+         \end{subfigure}
+         \hfill
+         \begin{subfigure}{0.48\linewidth}
+            \centering
+            \includegraphics[width=\linewidth]{../img/scaled_pm10.png}
+            \caption{Particulate matter 10}
+         \end{subfigure}
+         
+         \vspace{0.5em}
+
+         \begin{subfigure}{0.48\linewidth}
+            \centering
+            \includegraphics[width=\linewidth]{../img/scaled_so2.png}
+         \caption{Sulphur dioxide}
+         \end{subfigure}
+         \hfill
+         \begin{subfigure}{0.48\linewidth}
+            \centering
+            \includegraphics[width=\linewidth]{../img/scaled_speed.png}
+            \caption{Wind speed}
+         \end{subfigure}
+
+         \caption{\textit{Post-processed daily curves of the nitrogen dioxide and meteorological data, both standardized by their overall mean and standard deviation.}}
+      \end{figure}
+
+      \subsection*{Components of the time series}     
+
+      The response variable time-series $x_{t}$ is not statationary because the mean and variance are changing with time. To achieve stationarity there is a need for detrending and a variance stabilizing transformation. In order to stabilize the variance we use Box-Cox transformations in the training set, $y_{t} = (x_{t}^{\lambda} - 1) / \lambda$. The Box-Cox transformations allow us to experiment with a wide variety of $\lambda$ values. A good value of $\lambda$ is one the makes the variation in the data constant through time (Neil Watson, 2024). The \texttt{R} package \texttt{forecast} was used to perform the Box-Cox transformation which yielded an optimal value of $\hat{\lambda} \approx 0$, suggesting a logarithmic transformation. Then, conducting first-order differencing at lag one to remove the trend $z_{t} = y_{t} - y_{t-1} \, \text{for} \, t \in \{2, \, 3, \, \ldots, \, p\}$. The time series $z_{t}$ is now stationary. Thus, we only need to account for the mean and variance in our models.      
+
+      \begin{figure}[H]
+         \centering
+         \begin{subfigure}{0.48\linewidth}
+            \centering
+            \includegraphics[width=\linewidth]{../img/raw_no2.png}
+            \caption{Before transformations.}
+         \end{subfigure}
+         \hfill
+         \begin{subfigure}{0.48\linewidth}
+            \centering
+            \includegraphics[width=\linewidth]{../img/raw_no2.png}
+            \caption{After transformations.}
+         \end{subfigure}
+         \caption{\textit{Comparison of NO\textsubscript{2} time series before and after transformations.}}
+      \end{figure}
+
+      \subsection*{Results}
+
+      \begin{table}[H]
+         \centering
+         \begin{tabular}{lcccccc}
+         \hline
+         \multirow{2}{*}{Model} & \multicolumn{3}{c}{RMSE} & \multicolumn{3}{c}{MAE} \\
+         \cline{2-7}
+         & \multicolumn{3}{c}{Forecasts} & \multicolumn{3}{c}{Forecasts} \\
+         & \multicolumn{3}{c}{($h$ day time horizon)} & \multicolumn{3}{c}{($h$ day time horizon)} \\
+         & 24 & 168 & 720 & 24 & 168 & 720 \\
+         \hline
+         Average & 8.61 & 7.16 & 6.62 & 8.54 & 6.48 & 5.73 \\
+         \rowcolor{blue!20} Naive & 1.35 & 5.58 & 7.10 & 1.00 & 3.59 & 4.80 \\
+         SNaive & 3.72 & 5.71 & 7.21 & 2.48 & 4.05 & 5.28 \\
+         Drift & 1.35 & 5.59 & 7.16 & 1.00 & 3.60 & 4.86 \\
+         ARIMA & 5.01 & 6.46 & 6.45 & 4.91 & 5.81 & 5.57 \\
+         \rowcolor{red!20} GP & 6.07 & 8.73 & 10.72 & 5.47 & 7.29 & 9.14 \\
+         \hline
+         \end{tabular}
+         \caption{\textit{RMSE and MAE of forecasting models across horizons.}}
+      \end{table}
 
    \section*{References}
       \begin{enumerate}

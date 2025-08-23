@@ -3,57 +3,52 @@ require(package="dplyr")
 require(package="ggplot2")
 require(package="zoo")
 
-load(file="../object/data_storage.RData")
-train <- data_storage[[1]]
+load(file="../object/raw_data.RData")
+load(file="../object/scaled_data.RData")
+
+raw_train_data <- rbind(raw_data[[1]], raw_data[[2]])
+scaled_train_data <- rbind(scaled_data[[1]], scaled_data[[2]])
 
 var_name <- c("DateTime", "NO2", "PM10", "SO2", "Speed")
-x_name <- c("DateTime", expression(NO[2]), expression(PM[10]), expression(SO[2]), expression(Speed))
-color_name <- c("lightskyblue", "lightseagreen", "palegreen", "plum3", "lightsalmon", "khaki2")
+x_name <- c("DateTime", 
+            expression(NO[2] ~ "(" * mu * "g/m"^3 * ")"), 
+            expression(PM[10] ~ "(" * mu * "g/m"^3 * ")"),
+            expression(SO[2] ~ "(" * mu * "g/m"^3 * ")"), 
+            expression("Wind Speed" ~ "(m/s)"))
 
 # Summary statistics.
-summary_table <- rbind("Min."=sapply(X=train, FUN=min, na.rm=TRUE),
-                       "1st Qu."=sapply(X=train, FUN=quantile, 0.25, na.rm=TRUE),
-                       "Median"=sapply(X=train, FUN=median, na.rm=TRUE),
-                       "Mean"=sapply(X=train, FUN=mean, na.rm=TRUE),
-                       "Std."=sapply(X=train, FUN=sd, na.rm=TRUE),
-                       "3rd Qu."=sapply(X=train, FUN=quantile, 0.75, na.rm=TRUE),
-                       "Max."=sapply(X=train, FUN=max, na.rm=TRUE),
-                       "NA's"=sapply(X=train, FUN=function(column) sum(is.na(column))))
-summary_statistics <- round(x=t(x=summary_table[, 2:5]), digits=2)
-summary_statistics
+S_mat <- rbind("Min."=sapply(X=raw_train_data, FUN=min, na.rm=TRUE),
+               "1st Qu."=sapply(X=raw_train_data, FUN=quantile, 0.25, na.rm=TRUE),
+               "Median"=sapply(X=raw_train_data, FUN=median, na.rm=TRUE),
+               "Mean"=sapply(X=raw_train_data, FUN=mean, na.rm=TRUE),
+               "Std."=sapply(X=raw_train_data, FUN=sd, na.rm=TRUE),
+               "3rd Qu."=sapply(X=raw_train_data, FUN=quantile, 0.75, na.rm=TRUE),
+               "Max."=sapply(X=raw_train_data, FUN=max, na.rm=TRUE),
+               "NA's"=sapply(X=raw_train_data, FUN=function(column) sum(is.na(column))))
+summary_statistics <- round(x=t(x=S_mat[, 2:5]), digits=2)
+print(x=summary_statistics)
+
+# Scatter plots.
+for(i in 1:2){
+   for(j in 2:5){
+      if(i == 1){
+         x <- raw_train_data[[var_name[j]]]
+         type <- "raw"
+      } else {
+         x <- scaled_train_data[[var_name[j]]]
+         type <- "scaled"
+      }
+      
+      filename <- paste0("../img/", type, "_", tolower(x=var_name[j]), ".png")
+      png(filename=filename, width=6.5, height=4, res=300, units="in")
+      plot(x=raw_train_data$DateTime, y=x, main="", xlab="Time", ylab=x_name[j],
+           type="l", col="steelblue", cex=0.5)
+      dev.off()
+   }
+}
 
 # Correlation plot.
-png(filename="../img/corrplot_2019.png", width=8, height=6, res=600, units="in")
-cor_matrix <- train %>% select(-DateTime) %>% cor(use="na.or.complete", method="pearson")
-corrplot(corr=cor_matrix, method="number", type="lower")
+png(filename="../img/corrplot.png", width=6.5, height=4, res=300, units="in")
+cor_mat <- cor(scaled_train_data[, 2:5], use="na.or.complete", method="pearson")
+corrplot(corr=cor_mat, method="number", type="lower")
 dev.off()
-
-for(i in 2:5){
-   x <- train[[var_name[i]]]
-   
-   main_hist <- bquote(.("Histogram of") ~ .(x_name[[i]]))
-   main_scatter <- bquote(.("Scatter plot of") ~ .(x_name[[i]]))
-   
-   filename1 <- paste0("../img/", tolower(x=var_name[i]), "_hist_2019.png")
-   filename2 <- paste0("../img/", tolower(x=var_name[i]), "_scatter_2019.png")
-   
-   # Histogram plot.
-   png(filename=filename1, width=8, height=6, res=600, units="in")
-   hist(x=x, col=color_name[i-1], main=main_hist, xlab=x_name[i], breaks=30, freq=FALSE)
-   abline(v=mean(x=x, na.rm=TRUE), col="red", lwd=3)
-   abline(v=median(x=x, na.rm=TRUE), col="black", lwd=3)
-   abline(v=mean(x=x, na.rm=TRUE) - sd(x=x, na.rm=T), col="hotpink", lwd=3)
-   abline(v=mean(x=x, na.rm=TRUE) + sd(x=x, na.rm=T), col="hotpink", lwd=3)
-   legend(x="topright", legend=c("Mean" , "Median", "Standard deviation"), 
-          col=c("red", "black", "hotpink"), lwd=3)
-   dev.off()
-   
-   # Scatter plot.
-   png(filename=filename2, width=8, height=6, res=600, units="in")
-   ma <- rollmean(x=x, k=718, na.rm=TRUE, fill=NA)
-   plot(x=train$DateTime, y=x, main=main_scatter, xlab="Time", ylab=x_name[i], 
-        col=color_name[i-1], type="p", cex=0.5, pch=18)
-   lines(x=train$DateTime, y=ma, col="steelblue", lwd=3)
-   legend(x="topright", legend=c("MA718"), col=c("steelblue"), lwd=3)
-   dev.off()
-}
