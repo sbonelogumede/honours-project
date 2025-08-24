@@ -36,10 +36,10 @@ The University of Cape Town}
    \begin{figure}[H]
       \centering
       \includegraphics[width=0.48\linewidth]{../img/gp.png}
-      \caption{\textit{An example of a Gaussian process on $\{0, 10, \ldots, 100\}$.}}
+      \caption{\textit{An example of a Gaussian process on $\{0, 10, \ldots, 50\}$.}}
    \end{figure}
    
-   A special property of Gaussian processes is that if you take a countable finite set of observations $\{x_{1}, \, \ldots, \, x_{p}\}$ their joint distribution is 
+   A special property of Gaussian processes is that if you take a countable finite set of random variables $\{X_{1}, \, \ldots, \, X_{p}\}$ their joint distribution is 
    $
    \mathbf{X} =
    \begin{bmatrix}
@@ -72,7 +72,7 @@ The University of Cape Town}
 
    \vspace{1em}
    
-   Often in the literature people use $f(x_{t}) = 0$ and $g(x_{i}, \, x_{j}) = \alpha^{2} \text{exp}(- \frac{1}{2} (\frac{|x_i - x_j|}{\rho})^2) + \sigma\delta_{ij}$, where $\alpha$ and $\rho$ are hyperparameters and $\delta_{ij}$ is an indicator function. The latter is known as the squared-exponential kernel. Some kernel functions common in the literature are the following:
+   Often in the literature people use $f(x_{t}) = 0$ and $g(x_{i}, \, x_{j}) = \alpha^{2} \text{exp}(- \frac{1}{2} (\frac{|x_i - x_j|}{\rho})^2) + \sigma\delta_{ij} \, \text{where}, \, \delta_{ij} = 1 \, \text{for} \, i=j \, \text{and} \, \delta_{ij} = 0 \, \text{for} \, i \neq j$, $\alpha$, $\rho$, and $\sigma$ are hyperparameters. The latter is known as the squared-exponential kernel. Some kernel functions common in the literature are the following:
 
    \vspace{1em}
    
@@ -133,13 +133,13 @@ The University of Cape Town}
          \centering
          \begin{subfigure}{0.48\linewidth}
             \centering
-            \includegraphics[width=\linewidth]{../img/raw_no2.png}
+            \includegraphics[width=\linewidth]{../img/extracted_no2.png}
          \caption{Nitrogen dioxide}
          \end{subfigure}
          \hfill
          \begin{subfigure}{0.48\linewidth}
             \centering
-            \includegraphics[width=\linewidth]{../img/raw_pm10.png}
+            \includegraphics[width=\linewidth]{../img/extracted_pm10.png}
             \caption{Particulate matter 10}
          \end{subfigure}
          
@@ -147,13 +147,13 @@ The University of Cape Town}
 
          \begin{subfigure}{0.48\linewidth}
             \centering
-            \includegraphics[width=\linewidth]{../img/raw_so2.png}
+            \includegraphics[width=\linewidth]{../img/extracted_so2.png}
          \caption{Sulphur dioxide}
          \end{subfigure}
          \hfill
          \begin{subfigure}{0.48\linewidth}
             \centering
-            \includegraphics[width=\linewidth]{../img/raw_speed.png}
+            \includegraphics[width=\linewidth]{../img/extracted_speed.png}
             \caption{Wind speed}
          \end{subfigure}
 
@@ -164,13 +164,13 @@ The University of Cape Town}
          \centering
          \begin{subfigure}{0.48\linewidth}
             \centering
-            \includegraphics[width=\linewidth]{../img/scaled_no2.png}
+            \includegraphics[width=\linewidth]{../img/transformed_no2.png}
          \caption{Nitrogen dioxide}
          \end{subfigure}
          \hfill
          \begin{subfigure}{0.48\linewidth}
             \centering
-            \includegraphics[width=\linewidth]{../img/scaled_pm10.png}
+            \includegraphics[width=\linewidth]{../img/transformed_pm10.png}
             \caption{Particulate matter 10}
          \end{subfigure}
          
@@ -178,13 +178,13 @@ The University of Cape Town}
 
          \begin{subfigure}{0.48\linewidth}
             \centering
-            \includegraphics[width=\linewidth]{../img/scaled_so2.png}
+            \includegraphics[width=\linewidth]{../img/transformed_so2.png}
          \caption{Sulphur dioxide}
          \end{subfigure}
          \hfill
          \begin{subfigure}{0.48\linewidth}
             \centering
-            \includegraphics[width=\linewidth]{../img/scaled_speed.png}
+            \includegraphics[width=\linewidth]{../img/transformed_speed.png}
             \caption{Wind speed}
          \end{subfigure}
 
@@ -199,13 +199,13 @@ The University of Cape Town}
          \centering
          \begin{subfigure}{0.48\linewidth}
             \centering
-            \includegraphics[width=\linewidth]{../img/raw_no2.png}
+            \includegraphics[width=\linewidth]{../img/extracted_no2.png}
             \caption{Before transformations.}
          \end{subfigure}
          \hfill
          \begin{subfigure}{0.48\linewidth}
             \centering
-            \includegraphics[width=\linewidth]{../img/raw_no2.png}
+            \includegraphics[width=\linewidth]{../img/transformed_no2.png}
             \caption{After transformations.}
          \end{subfigure}
          \caption{\textit{Comparison of NO\textsubscript{2} time series before and after transformations.}}
