@@ -30,6 +30,8 @@ https://odp-cctegis.opendata.arcgis.com/
 
 - https://betanalpha.github.io/assets/case_studies/gaussian_processes.html
 - https://www.niamhcahill.com/post/gp_tutorial/
+- https://mc-stan.org/rstan/articles/rstan.html
+- https://mc-stan.org/docs/stan-users-guide/gaussian-processes.html
 
 ## Good Practices:
 
