@@ -1,0 +1,370 @@
+---
+title: "Gold_price_application"
+format: html
+---
+
+-ARIMA/AR(1) assumes a fixed functional form (linear dependence on past lags)
+
+-Gaussian Process (GP) regression does not assume a fixed equation.
+-> Instead of saying "gold price depends linearly on yesterday’s price," GP says "gold price is a random function correlated across time (and potentially across covariates like oil, stock indices)
+
+Why GPs might help for gold prices
+-Gold depends on multiple noisy drivers (oil, stocks, currencies).
+-GP can flexibly model nonlinear functional relationships between these predictors and gold price without you specifying the exact formula.
+
+test: Do these external variables help explain/predict gold prices better than just time-based ARIMA?
+
+##Close vs adj close?
+-If your goal is forecasting actual market prices (e.g., “what will the ETF close at tomorrow?”), use Close.
+
+-If your goal is analyzing underlying economic drivers or comparing with other assets (e.g., oil, silver, indices), use Adj Close because it gives a consistent price series.
+
+-If you use Adj Close, you might “smooth out” some changes that actually happened in the market.
+
+##Rule of Thumb:
+
+For modeling price movements/trading strategies → use Close.
+
+For modeling long-term value/returns → use Adj Close.
+
+
+
+
+##1. EDA 
+
+1.1 We’ll first read in the dataset, check dimensions, missing values, and focus on the Close price of gold.
+```{r}
+library(tidyverse)
+library(lubridate)
+
+# Load dataset
+gold <- read.csv("FINAL_USO.csv")
+
+# Inspect structure
+str(gold)
+summary(gold)
+
+# Convert Date to proper date type
+gold$Date <- as.Date(gold$Date, format="%Y-%m-%d")
+
+# Sort by Date just in case
+gold <- gold %>% arrange(Date)
+
+# Focus on Gold's Close
+gold_close <- gold %>%
+  select(Date, Close) %>%
+  rename(Gold_Close = Close)
+
+head(gold_close)
+
+# Inspect structure
+str(gold)
+
+# Summary statistics
+summary(gold)
+
+# Check for missing values
+colSums(is.na(gold))
+```
+1.2) Time-series plot to see overall trends & volatility.
+
+```{r}
+ggplot(gold_close, aes(Date, Gold_Close)) +
+  geom_line(color="goldenrod") +
+  theme_minimal() +
+  labs(title="Gold Closing Price (USD)",
+       x="Date", y="Close Price (USD)")
+
+```
+=> mean level changes a bit-> gp picks this up -> not with squared expo-> process wih sudden jumps at small distances, variance constant around jumps-. model mean and var around that-> 2 var parameters in GP
+
+=> capture jumps -> pat of var -> can do this in future 
+
+This will show if gold is trending, mean-reverting, or highly volatile.
+
+Observations from the plot
+Trend: Gold prices fell sharply from late 2012–2013, then entered a long sideways/oscillating movement until 2019.
+
+Volatility: Periods of high volatility (2011–2013) followed by calmer fluctuations (2016–2018).
+
+No obvious seasonality: At first glance, there’s no clear seasonal repeating pattern like in monthly sales or temperature data.
+
+Shumway & Stoffer put decomposition under exploratory tools — it helps see seasonality or trend before deciding on ARIMA differencing or GP kernel design.
+```{r}
+library(astsa)
+
+# Convert Closing Price to a time series object
+# daily → assume ~252 trading days per year
+ts_gold <- ts(gold$Close, frequency = 60, start = c(2011, 11))
+
+# STL decomposition (Shumway & Stoffer often prefer this for robustness)
+gold_stl <- stl(ts_gold, s.window = "periodic")
+
+# Plot STL decomposition
+plot(gold_stl, main="STL Decomposition of Gold Prices")
+
+#multiplicative-> season and residuals are multiplicative with trend 
+library(forecast)
+fit_ets <- ets(ts_data)
+summary(fit_ets)
+
+
+```
+
+
+```{r}
+library(forecast)
+loess_trend <- ma(ts_gold, order = 30)  # Simple moving average
+plot(ts_gold, main = "Gold Price with Smoothed Trend")
+lines(loess_trend, col = "blue", lwd = 2)
+
+```
+
+
+```{r}
+library(forecast)
+
+fit_tbats <- tbats(ts_gold)
+plot(forecast(fit_tbats))
+
+```
+
+
+
+
+STL Decomposition of Gold Prices => check this -> seasonality in residuals
+
+Observed Data (Top Panel)
+
+The gold closing prices show clear long-term swings with periods of upward and downward trends.
+
+Around 2011–2013, prices declined sharply, and after 2015 the series shows mild recovery.
+
+Volatility (spread of fluctuations) seems to change over time, suggesting some heteroskedasticity.
+
+Seasonal Component (Second Panel)
+
+There are short-term repeating oscillations (likely annual/quarterly effects), but their magnitude is quite small compared to overall price level changes.
+
+This suggests weak but present seasonality, which may not dominate the dynamics.
+
+For ARIMA, we might or might not include seasonal differencing. For GP, this could motivate testing a periodic kernel, though the effect is modest.
+
+##Trend Component (Third Panel)
+
+Clear downward trend from 2011 through 2013.
+
+After 2014, the trend stabilizes with mild upward drift.
+
+This confirms the ADF result earlier (non-stationary).
+
+In ARIMA, we’d need differencing (d=1).
+
+In GP, this motivates including a Linear kernel to model the drift directly.
+
+##Remainder (Bottom Panel)
+
+Captures short-term unpredictable movements (residuals).
+
+Shows bursts of volatility around 2012 and again around 2016–2017.
+
+This reminds us of financial data characteristics: shocks, volatility clustering
+
+```{r}
+library(tseries)
+library(forecast)
+
+# 1. KPSS test (null = stationary)
+kpss_test <- kpss.test(ts_gold, null = "Level")
+print(kpss_test)
+
+# 2. Periodogram for seasonality
+spec.pgram(ts_gold, log="no", main="Periodogram of Gold Closing Price")
+
+# 3. Seasonal strength (from STL decomposition we already did)
+stl_fit <- stl(ts_gold, s.window="periodic")
+summary(stl_fit$time.series)
+
+# 4. Rolling variance to check volatility clustering
+roll_var <- zoo::rollapply(ts_gold, width=50, FUN=var, align="right", fill=NA)
+plot(roll_var, type="l", main="Rolling Variance (Window = 365 days)", ylab="Variance", xlab="Time")
+
+```
+##Stationarity Testing (KPSS)
+KPSS Test result: 
+
+KPSS=10.24,p<0.01.
+means we Reject the null of stationarity.
+
+The series is non-stationary at levels → differencing or detrending will be needed for ARIMA.
+
+For GP, we can directly encode this via kernels (e.g., linear trend kernel).
+
+##Periodogram
+The periodogram shows strong low-frequency power.
+
+most of the variability is explained by slow-moving components (trend) rather than sharp seasonal cycles.
+
+No sharp spikes at higher frequencies → weak fixed periodicity.
+
+
+##Rolling Variance:
+
+The rolling variance plot showed volatility clustering (large fluctuations in certain periods, e.g. around 2012–2013).
+
+This confirms heteroskedasticity — variance is not constant over time.
+
+note:time-varying volatility, i.e. heteroskedasticity.
+This is different from variance being proportional to the mean level (which logging fixes).
+
+volatility clustering → calm and stormy periods alternate.
+So, even if your ARIMA captures the mean dynamics, it will fail on the variance structure.
+
+
+
+
+We used a 50-day rolling window to compute variance, consistent with standard practice in financial econometrics (Tsay, 2010). This window length strikes a balance between capturing short-term volatility clustering (Engle, 1982; Bollerslev, 1986) and avoiding excessive noise. The resulting variance plot reveals pronounced heteroskedasticity, with clusters of high and low volatility over time.”
+
+1.3) Since ARIMA models need stationarity, we’ll check with ACF/PACF and ADF test.
+```{r}
+library(tseries)
+
+ts_gold <- ts(gold$Close, frequency = 252)  # approx 252 trading days per year
+
+# Plot ACF and PACF
+par(mfrow=c(1,2))
+acf(ts_gold, main="ACF of Gold Closing Price")
+pacf(ts_gold, main="PACF of Gold Closing Price")
+
+
+# Augmented Dickey-Fuller test
+adf.test(ts_gold)
+
+```
+If p-value > 0.05 → non-stationary, need differencing (ARIMA with d>0).
+
+If p-value < 0.05 → stationary.
+
+
+ACF: The autocorrelation function shows extremely high correlation across many lags, gradually decaying. This is a strong sign of non-stationarity. In a stationary series, the ACF should cut off relatively quickly.
+
+PACF: The partial autocorrelation shows one big spike at lag 1, then quickly flattens. This is also typical of a non-stationary series (like a random walk).
+
+Since the p-value >> 0.05, we fail to reject the null hypothesis of a unit root. This confirms what the ACF/PACF suggest: the gold closing price series is non-stationary
+
+
+
+##Constrution of kernel 
+Time-Series Workflow (Time Series Analysis and Its Applications (Shumway & Stoffer) and Brockwell & Davis.)
+1. Exploratory Data Analysis (EDA)
+
+Plot the series: check for trend, volatility, seasonality.
+
+Sample ACF/PACF: helps see persistence, autocorrelation strength.
+
+Unit root tests (ADF, KPSS): check stationarity.
+
+-In ARIMA, this dictates whether we need differencing.
+- For GP, this guides kernel design (trend → linear, short memory → Matérn, cycles → periodic).
+
+2. Transformations
+
+Log transform: stabilizes variance if needed.
+
+Differencing: used for ARIMA to remove trend/seasonality.
+
+ARIMA requires stationary data.
+
+GP does not require differencing → we keep levels and encode trend directly.
+
+3. Model Identification
+
+ARIMA side (Box-Jenkins):
+
+-Inspect ACF/PACF → choose p, q, d.
+
+-Seasonal differencing if seasonality detected.
+
+GP side:
+
+Decide kernel structure based on EDA:
+
+-If trending → add Linear kernel.
+
+-If short memory → add Matérn/SE.
+
+-If seasonality → add Periodic.
+
+-Always include Noise.
+
+4. Parameter Estimation
+
+-ARIMA: maximum likelihood (via Arima() in R).
+
+-GP: hyperparameter estimation via marginal likelihood (Stan).
+
+
+5. Diagnostic Checking
+
+-ARIMA: residuals → check if white noise.
+
+-GP: posterior predictive checks, compare actual vs predictive mean ± CI.
+
+ 6. Forecasting & Comparison
+
+ARIMA: forecast h-steps ahead.
+
+GP: posterior predictive distribution at future points.
+
+Compare using RMSE, MAE, interval coverage on a test set.
+
+##step 1 (might not be necessary)
+```{r}
+library(ggplot2)
+library(forecast)
+
+# Convert date column
+gold$Date <- as.Date(gold$Date)
+
+# Close price
+ggplot(gold, aes(x = Date, y = Close)) +
+  geom_line(color = "goldenrod") +
+  labs(title = "Gold Price (Close)", x = "Date", y = "Close Price") +
+  theme_minimal()
+
+# log-transformed Close
+gold$logClose <- log(gold$Close)
+
+ggplot(gold, aes(x = Date, y = logClose)) +
+  geom_line(color = "darkblue") +
+  labs(title = "Log-Transformed Gold Price", x = "Date", y = "Log(Close)") +
+  theme_minimal()
+
+# Compute log returns
+gold$logReturn <- c(NA, diff(log(gold$Close)))
+
+ggplot(gold, aes(x = Date, y = logReturn)) +
+  geom_line(color = "purple") +
+  labs(title = "Gold Log Returns", x = "Date", y = "Log Return") +
+  theme_minimal()
+
+
+
+```
+
+note: magnitude of fluctuations does not clearly grow with the mean level. So visually, logging doesn’t change much.
+
+
+Log transformations: stationarizes the data better by removing both trend and scale effects.
+
+The third plot (log differences) looks stationary — no clear trend, mean-reverting fluctuations, and a relatively stable variance (aside from volatility bursts, typical of financial data).
+
+This transformation achieves stationarity, which is essential for ARIMA.
+
+
+
+ use ARIMA + GARCH?
+
+-ARIMA handles trend & autocorrelation in the mean.
+
+-GARCH handles time-varying volatility in the variance.
