@@ -2,7 +2,7 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage[justification=centering]{caption}
-\usepackage[top=1in, bottom=1in, left=1.25in, right=1in]{geometry}
+\usepackage[margin=0.75in]{geometry}
 \usepackage{graphicx}
 \usepackage{float}
 \usepackage{multirow}
@@ -12,40 +12,68 @@
 \usepackage{tabularx}
 \usepackage{titlesec}
 
-\titleformat{\section}[block]{\normalfont\Large\bfseries\centering}{\thesection}{1em}{}
 
-\title{Gaussian Processes for Time Series}
-\date{\today}
-\author{Raphaela Azar and Sbonelo Gumede \\
-Supervised by Prof. Birgit Erni\\
-The University of Cape Town}
+\titleformat{\section}[block]{\normalfont\Large\bfseries\centering}{\thesection}{1em}{}
 
 \begin{document}
 
-   \maketitle
+   \begin{titlepage}
+      \centering
+
+      \vspace*{2cm}
+      \includegraphics[width=0.48\linewidth]{../img/UCT logo circular blue large.png}
+
+      \vspace*{2cm}
+
+      {\LARGE GAUSSIAN PROCESSES FOR TIME SERIES \\[0.5em]
+      with application to air pollution forecasting}
+
+      \vspace*{2cm}
+
+      {\large Raphaela Azar \& Sbonelo Gumede}
+
+      \vspace*{2cm}
+      
+      \begin{large}
+         Minor dissertation presented in partial fullfilment of the requirements for the degree of Honours in Statistics \& Data Science
+      \end{large}
+
+      \vspace*{2cm}
+
+      \begin{large}
+         Department of Statistical Sciences\\
+         University of Cape Town
+      \end{large}
+
+      \vspace*{2cm}
+
+      Supervised by\\
+      Dr Birgit Erni
+
+      \vfill
+
+   \end{titlepage}
 
    \begin{flushleft}
 
    \section*{Abstract}
 
-    In this paper we hope to define what is a Gaussian process. How can you use a Gaussian process for time series analysis? Compare the peformance of a Gaussian process to other time series analysis models such as state-space models. An area of application included is predicting the level of air pollution in the Table View station in Cape Town for the year of 2019. Another area of application is predicting the gold price for South Africa for the year of 2020. This is done in a Bayesian framework in order to make probabilistic statements and obtain a predictive distribution for future forecasts.
-
-   \newpage
+    In this paper we give a basic introduction into Gaussian Processes. We delve into how can you use a Gaussian process for time series analysis. Compare the peformance of Gaussian processes to other time series models. An area of application included is predicting the level of air pollution in the Table View station in Cape Town for the year of 2019. Another area of application is predicting the gold price for South Africa for the year of 2020. This is done in a Bayesian framework in order to make probabilistic statements and obtain a predictive distribution for future forecasts.
 
    \section*{Literature Review}
 
-   ((Rasmussen and Williams, 2006)) We have a training set of $\mathcal{D}$ of $n$ observations, $\mathcal{D} = \{(\mathbf{x}_{i}, y_{i}) \, | \, i = 1, \, \ldots, \, n\}$, where $\mathbf{x}$ denotes the input vector (covariates) of dimension $\mathcal{D}$ and y denotes a scalar output or targer (dependent variable); the column vector of inputs for all n cases are arranged in the $\mathcal{D} \times n \, design \, matrix\, X$, and the targets are collected in the vector $\mathbf{y}$, so we can write $\mathcal{D} = (X, \mathbf{y})$. 
+   ((\hyperref[Rasmussen2006]{Rasmussen and Williams, 2006})) We have a training set of $\mathcal{D}$ of $n$ observations, $\mathcal{D} = \{(\mathbf{x}_{i}, y_{i}) \, | \, i = 1, \, \ldots, \, n\}$, where $\mathbf{x}$ denotes the input vector (covariates) of dimension $\mathcal{D}$ and y denotes a scalar output or target (dependent variable); the column vector of inputs for all n cases are arranged in the $\mathcal{D} \times n \, design \, matrix\, X$, and the targets are collected in the vector $\mathbf{y}$, so we can write $\mathcal{D} = (X, \mathbf{y})$. 
 
    \vspace{1em}
 
-   \textbf{Definition 2.1.1} ((Rasmussen and Williams, 2006)).
+   \textbf{Definition 2.1.1} ((\hyperref[Rasmussen2006]{Rasmussen and Williams, 2006})).
    \textit{A Gaussian process is a collection of random variables, any finite number of which have a joint Gaussian distribution.}
 
    \vspace{1em}
 
    A Gaussian process is completely specified by its mean function and co-variance function. We define mean mean function $m(\mathbf{x})$ and the covariance function $k(\mathbf{x}, \mathbf{x}')$ for a real process $f(\mathbf{x})$ as
    $$m(\mathbf{x}) = \mathbb{E}[f(\mathbf{x})],$$
-   $$k(\mathbf{x}, \mathbf{x}') = \mathbb{E}[(f(\mathbf{x}) - m(\mathbf{x}))(f(\mathbf{x}' - m(\mathbf{x}')))],$$
+   $$k(\mathbf{x}, \mathbf{x}') = \mathbb{E}[(f(\mathbf{x}) - m(\mathbf{x}))(f(\mathbf{x}') - m(\mathbf{x}'))],$$
    and will write the Gaussian process as
    $$f(\mathbf{x}) \sim \text{GP}(m(\mathbf{x}), k(\mathbf{x}, \mathbf{x}')).$$
 
@@ -56,11 +84,11 @@ The University of Cape Town}
       X_{p}
    \end{bmatrix}
    \:
-   \sim \mathcal{N}_{p}(\boldsymbol{\mu}, \, \boldsymbol{\Sigma}),
+   \sim \mathcal{N}_{p}(\mathbf{m}, \, \mathbf{K}),
    \:
    \text{where}
    \:
-   \boldsymbol{\mu} = 
+   \mathbf{m} = 
    \begin{bmatrix}
       m(x_{1}) \\
       m(x_{2}) \\
@@ -70,7 +98,7 @@ The University of Cape Town}
    \: 
    \text{and}
    \:
-   \boldsymbol{\Sigma} = 
+   \mathbf{K} = 
    \begin{bmatrix}
       k(x_{1}, \, x_{1}) & k(x_{1}, \, x_{2}) & \cdots & k(x_{1}, \, x_{p}) \\
       k(x_{2}, \, x_{1}) & k(x_{2}, \, x_{2}) & \cdots & k(x_{2}, \, x_{p}) \\
@@ -80,22 +108,153 @@ The University of Cape Town}
    
    \vspace{1em}
 
-   Consider a simple example shown in figure 1, where $m(\mathbf{x}) = \mathbf{x} \, \text{and} \, k(\mathbf{x}, \mathbf{x}') = \text{I}_{p}$. 
+   Consider a simple example shown in Figure~\ref{figure_1}, where $m(\mathbf{x}) = \mathbf{x} \, \text{and} \, k(\mathbf{x}, \mathbf{x}') = \text{I}_{p}$. 
 
    \begin{figure}[H]
       \centering
       \includegraphics[width=0.48\linewidth]{../img/gp.png}
       \caption{\textit{An example of a Gaussian process on $t \in \{0, \, 10, \, \ldots, \, 50\}$.}}
+      \label{figure_1}
    \end{figure}
-   
-   Often people use 
-   $$m(x_{t}) = 0$$ 
-   and 
-   $$k(x_{i}, \, x_{j}) = \alpha^{2} \text{exp}(- \frac{1}{2} (\frac{|x_i - x_j|}{\rho})^2) + \sigma\delta_{ij},$$ 
-   $$\text{where} \, \delta_{ij} = 1 \, \text{for} \, i = j \, \text{and} \, \delta_{ij} = 0 \, \text{for} \, i \neq j, \, \alpha, \, \rho, \, \text{and} \, \sigma \, \text{are hyperparameters}.$$ 
-   The latter is known as the squared-exponential kernel. Some kernel functions common in the literature are the following:
 
-   \newpage 
+   \subsection*{Covariance functions}
+
+   ((\hyperref[Roberts2013]{Roberts et al., 2013})) In the following section, we briefly describe commonly used kernels. We start with a simple white noise, and then consider common \textit{stationary} covariances, both uni- and multi-dimensional. We finish this section with periodic and quasi-periodic kernel functions. We note that sums (and products) of valid covariance kernels give valid covariance functions (i.e. the resultant covariance matrices are positive semi-definite) and so we may entertain with ease multiple explanatory hypothesis. 
+
+   \vspace{1em}
+
+   \textit{White noise} with variance $\sigma^2$ is represented by
+   
+   $$k(x_{i}, \, x_{j}) = \sigma^2\delta_{ij}, \, \text{where} \, \delta_{ij} = 1 \, \text{for} \, i = j \, \text{and} \, \delta_{ij} = 0 \, \text{for} \, i \neq j.$$
+
+   This kernel allows us to entertain uncertainity in our observed data and is so typically found added to other kernels.
+
+   \vspace{1em}
+
+   \textit{The SE kernel} is given by
+
+   $$k(x_{i}, \, x_{j}) = h^{2} \text{exp}(-(\frac{x_i - x_j}{\lambda})^2),$$ 
+
+   where $h$ is an output-scale amplitude and $\lambda$ is an input (length, or time) scale. This gives rather smooth variations with typical time scale of $\lambda$ and admits functions drawn from the GP that are infinitely differentiable.
+
+   \vspace{1em}
+
+   \textit{The rational quadratic (RQ) kernel} is given by
+
+   $$k(x_{i}, \, x_{j}) = h^{2} (1 + \frac{(x_{i} - x_{j})^2}{\alpha\lambda^2})^{-\alpha},$$
+
+   where $\alpha$ is known as the index. ((\hyperref[Rasmussen2006]{Rasmussen and Williams, 2006})) show that this is equivalent to a scale mixture of SE kernels with different length scales, the latter distributed according to a Beta distribution with parameters $\alpha$ and $\lambda^{-2}$. This gives variations with a range of time scales, the distribution peaking around $\lambda$ but extending significantly longer period (but remaining rather smooth). When $\alpha \to \infty$, the RQ kernel reduces to the SE kernel with length scale $\lambda$.
+
+   \vspace{1em}
+
+   \textit{The Mat\'ern} class of covariance functions is defined by
+
+   $$k(x_{i}, \, x_{j}) = h^{2} \frac{1}{\Gamma(v)2^{v-1}} (2\sqrt{v}\frac{|x_{i} - x_{j}|}{\lambda}) \mathbb{B}_{v} (2\sqrt{v}\frac{|x_{i} - x_{j}|}{\lambda}),$$
+
+   where $h$ is the output scale, $\lambda$ is the input scale, $\Gamma()$ is the standard Gamma function and $\mathbb{B}()$ is the modified Bessel function of second order. The additional hyperparameter $v$ controls the degree of differentiability of the resultant functions modelled by a GP with a Mat\'ern covariance function, such that there are only $(v + \frac{1}{2})$ times differentiable. As $v \to \infty$, so the functions become infinitely differentiable and the Matern kernel becomes the SE one. Taking $v = \frac{1}{2}$ gives the exponential kernel
+
+   $$k(x_{i}, \, x_{j}) = h^{2} \text{exp}(-(\frac{x_i - x_j}{\lambda})^2),$$
+
+   which results in functions that are only once differentiable, and corresponds to the Ornstein-Unlenbeck process.
+
+   \subsection*{Prediction}
+
+   ((\hyperref[Betancourt2020]{Betancourt, 2020})) To simulate sampling a function from a Gaussian process and then evaluating the sampled function at the grid of covariate values we can just directly sample from a multivariate normal random number generator.
+
+   \vspace{1em}
+
+   We can also consider \textit{predictions} by taking advantage of the conditional structure of a multivariate normal density function. Consider a grid of observed covariate values $$\{x_{1}^{\text{obs}}, \, \ldots, \, x_{N_{\text{obs}}}^{\text{obs}}\}$$
+
+   where we know the function values $f(x_{n}^{\text{obs}})$, and a grid of unobserved covariate values where we want to predict the functional values, $$\{x_{1}^{\text{pred}}, \, \ldots, \, x_{N_{\text{pred}}}^{\text{pred}}\}.$$
+
+   The parameters of the multivariate normal density function of the combined covariate values decomposes into the parameters of the multivariate normal density function for each component grid plus mixed covariate function evaluations.
+
+   \vspace{1em}
+
+   $\mathbf{m} = 
+   \begin{bmatrix}
+      m(x_{1}^{\text{obs}}) \\
+      \vdots \\
+      m(x_{N_{\text{obs}}}^{\text{obs}}) \\
+      m(x_{1}^{\text{pred}}) \\
+      \vdots \\
+      m(x_{N_{\text{pred}}}^{\text{pred}})
+   \end{bmatrix}  
+   \: 
+   \text{and}
+   \:
+   \mathbf{K} = 
+   \begin{bmatrix}
+      k(x_{1}^{\text{obs}}, \, x_{1}^{\text{obs}}) 
+      & \cdots 
+      & k(x_{1}^{\text{obs}}, \, x_{N_{\text{obs}}}^{\text{obs}}) 
+      & k(x_{1}^{\text{obs}}, \, x_{1}^{\text{pred}}) 
+      & \cdots 
+      & k(x_{1}^{\text{obs}}, \, x_{N_{\text{pred}}}^{\text{pred}}) \\
+      
+      \vdots & \ddots & \vdots & \vdots & \ddots & \vdots \\
+      
+      k(x_{N_{\text{obs}}}^{\text{obs}}, \, x_{1}^{\text{obs}}) 
+      & \cdots 
+      & k(x_{N_{\text{obs}}}^{\text{obs}}, \, x_{N_{\text{obs}}}^{\text{obs}}) 
+      & k(x_{N_{\text{obs}}}^{\text{obs}}, \, x_{1}^{\text{pred}}) 
+      & \cdots 
+      & k(x_{N_{\text{obs}}}^{\text{obs}}, \, x_{N_{\text{pred}}}^{\text{pred}}) \\
+      
+      k(x_{1}^{\text{pred}}, \, x_{1}^{\text{obs}}) 
+      & \cdots 
+      & k(x_{1}^{\text{pred}}, \, x_{N_{\text{obs}}}^{\text{obs}}) 
+      & k(x_{1}^{\text{pred}}, \, x_{1}^{\text{pred}}) 
+      & \cdots 
+      & k(x_{1}^{\text{pred}}, \, x_{N_{\text{pred}}}^{\text{pred}}) \\
+      
+      \vdots & \ddots & \vdots & \vdots & \ddots & \vdots \\
+      
+      k(x_{N_{\text{pred}}}^{\text{pred}}, \, x_{1}^{\text{obs}}) 
+      & \cdots 
+      & k(x_{N_{\text{pred}}}^{\text{pred}}, \, x_{N_{\text{obs}}}^{\text{obs}}) 
+      & k(x_{N_{\text{pred}}}^{\text{pred}}, \, x_{1}^{\text{pred}}) 
+      & \cdots 
+      & k(x_{N_{\text{pred}}}^{\text{pred}}, \, x_{N_{\text{pred}}}^{\text{pred}})
+   \end{bmatrix}$,
+
+   \vspace{1em}
+   
+   more compactly,
+
+   \vspace{1em}
+
+   $\mathbf{m} = 
+   \begin{bmatrix}
+      \mathbf{m}_{\text{obs}} \\
+      \\
+      \mathbf{m}_{\text{pred}}
+   \end{bmatrix}  
+   \: 
+   \text{and}
+   \:
+   \mathbf{K} = 
+   \begin{bmatrix}
+      \mathbf{K}_{\text{obs}} & \mathbf{K}_{\text{mix}} \\
+      \\
+      (\mathbf{K}_{\text{mix}})^{T} & \mathbf{K}_{\text{pred}}
+   \end{bmatrix}$.
+
+   \vspace{1em}
+
+   The conditional probability density function for the unobserved function values $(f_{\text{pred}})_{n} = f(x_{n}^{\text{pred}})$ given the observed function values  $(f_{\text{obs}})_{n} = f(x_{n}^{\text{obs}})$ falls into the multivariate normal family,
+
+   $$\pi(\mathbf{f}_{\text{pred}} | \mathbf{f}_{\text{obs}}) \sim \mathcal{N}_{n}(\boldsymbol{\mu}, \boldsymbol{\Sigma})$$
+
+   with the location parameters 
+
+   $$\boldsymbol{\mu} = \mathbf{m}_{\text{pred}} + (\mathbf{K}_{\text{mix}})^{T} \cdot (\mathbf{K}_{\text{obs}})^{-1} \cdot (\mathbf{f}_{\text{obs}} - \mathbf{m}_{\text{obs}}) $$
+
+   and the covariance matrix parameters
+
+   $$\boldsymbol{\Sigma} = \mathbf{K}_{\text{pred}} - (\mathbf{K}_{\text{mix}})^{T} \cdot (\mathbf{K}_{\text{obs}})^{-1} \cdot \mathbf{K}_{\text{mix}}.$$
+
+   Inference with Gaussian process priors proceeds similarly. Once we've identified the covariate values at which we have observations or will want to make predictions we can specify the marginalized prior model with the corresponding multivariate normal density function. If the observational model is normal then we can generate predictions analytically with the conditioning operations for the posterior covariance function.
 
    \section*{Air pollution example}
    \subsection*{Exploratory data analysis}
@@ -243,19 +402,21 @@ The University of Cape Town}
          & 24 & 168 & 720 & 24 & 168 & 720 \\
          \hline
          Average & 8.61 & 7.16 & 6.62 & 8.54 & 6.48 & 5.73 \\
-         \rowcolor{blue!20} Naive & 1.35 & 5.58 & 7.10 & 1.00 & 3.59 & 4.80 \\
+         Naive & 1.35 & 5.58 & 7.10 & 1.00 & 3.59 & 4.80 \\
          SNaive & 3.72 & 5.71 & 7.21 & 2.48 & 4.05 & 5.28 \\
          Drift & 1.35 & 5.59 & 7.16 & 1.00 & 3.60 & 4.86 \\
          ARIMA & 5.01 & 6.46 & 6.45 & 4.91 & 5.81 & 5.57 \\
-         \rowcolor{red!20} GP & 6.07 & 8.73 & 10.72 & 5.47 & 7.29 & 9.14 \\
+         GP & \textcolor{red}{6.07} & \textcolor{red}{8.73} & \textcolor{red}{10.72} & \textcolor{red}{5.47} & \textcolor{red}{7.29} & \textcolor{red}{9.14} \\
          \hline
          \end{tabular}
          \caption{\textit{RMSE and MAE of forecasting models across horizons.}}
       \end{table}
 
-   \section*{References}
+   \section*{Bibliography}
       \begin{enumerate}
-         \item https://www.lung.org/clean-air/outdoors/what-makes-air-unhealthy/nitrogen-dioxide
+         \item \label{Betancourt2020} \href{https://betanalpha.github.io/assets/case_studies/gaussian_processes.html}{Betancourt (2020). Robust Gaussian process modeling.}
+          \item \label{Roberts2013} \href{https://royalsocietypublishing.org/}{Roberts et al. (2013). Gaussian processes for time-series modelling. \textit{Philosophical Transactions of the Royal Society}.}
+         \item \label{Rasmussen2006} \href{https://gaussianprocess.org/gpml/}{Rasmussen and Williams (2006). Gaussian Processes in Machine Learning. \textit{The MIT Press.}}
       \end{enumerate}
    
    \end{flushleft}

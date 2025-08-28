@@ -11,17 +11,17 @@ year <- sample(x = 1:200, size = 100) %>% sort
 x <- year / 100
 d <- fields::rdist(x) # Distance matrix
 
+alpha <- 0.2 # Hyperparameter
+phi <- 1 
+sigma <- sqrt(x = 2)
+K <- exp(-(phi^2)*(d^2)) # Kernel
+
 plot(d[, 1], K[, 1],
 	  type="l",
 	  xlab="Year Difference",
 	  ylab="Autocorrelation",
 	  col="steelblue",
 	  lwd=2)
-
-alpha <- 0.2 # Hyperparameter
-phi <- 1 
-sigma <- sqrt(x = 2)
-K <- exp(-(phi^2)*(d^2)) # Kernel
 
 g <- mvtnorm::rmvnorm(n=5, sigma=(alpha^2)*K) # mean defaults to 0
 matplot(x, t(g), type="l", ylab="G", xlab="Year")
