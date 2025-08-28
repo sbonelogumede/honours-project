@@ -95,19 +95,13 @@ library(astsa)
 
 # Convert Closing Price to a time series object
 # daily → assume ~252 trading days per year
-ts_gold <- ts(gold$Close, frequency = 60, start = c(2011, 11))
-
-# STL decomposition (Shumway & Stoffer often prefer this for robustness)
-gold_stl <- stl(ts_gold, s.window = "periodic")
-
-# Plot STL decomposition
-plot(gold_stl, main="STL Decomposition of Gold Prices")
+ts_gold <- ts(gold$Close, frequency = 1, start = c(2011, 11))
 
 #multiplicative-> season and residuals are multiplicative with trend 
 library(forecast)
-fit_ets <- ets(ts_data)
+fit_ets <- ets(ts_gold)
 summary(fit_ets)
-
+plot(fit_ets)
 
 ```
 
@@ -122,14 +116,30 @@ lines(loess_trend, col = "blue", lwd = 2)
 
 
 ```{r}
-library(forecast)
+fit_ets <- ets(ts_gold)
+forecast_ets <- forecast(fit_ets, h=100)
+plot(forecast_ets)
 
-fit_tbats <- tbats(ts_gold)
-plot(forecast(fit_tbats))
 
 ```
 
 
+
+```{r}
+library(forecast)
+
+# Training window: last 500 obs
+ts_train <- window(ts_gold, start = length(ts_gold) - 500)
+
+fit_naive <- naive(ts_train, h=30)
+fit_arima <- auto.arima(ts_train)
+fit_garch <- auto.arima(ts_train) # replace residuals with GARCH later
+
+autoplot(forecast(fit_naive, h=30)) + ggtitle("Naive Forecast")
+autoplot(forecast(fit_arima, h=30)) + ggtitle("ARIMA Forecast")
+
+
+```
 
 
 STL Decomposition of Gold Prices => check this -> seasonality in residuals
@@ -368,3 +378,568 @@ This transformation achieves stationarity, which is essential for ARIMA.
 -ARIMA handles trend & autocorrelation in the mean.
 
 -GARCH handles time-varying volatility in the variance.
+
+
+
+Fit Guassian process: Method 1 (Latent variable method)
+
+```{r}
+gold <- read.csv("FINAL_USO.csv")
+gold$Date <- as.Date(gold$Date, format="%Y-%m-%d")
+
+head(gold)
+
+```
+
+
+```{r}
+library(cmdstanr)
+# Use first 1500 obs for training, next 100 for forecasting
+Ntrain <- 1500
+x1 <- 1:300
+y1 <- scale(gold$Close[1:300], center = TRUE, scale = TRUE)
+# Prediction horizon: next 20 days
+x2 <- 301:320
+
+stan_data <- list(
+  N1 = length(x1),
+  x1 = as.array(x1),
+  y1 = as.vector(y1),
+  N2 = length(x2),
+  x2 = as.array(x2)
+)
+
+mod <- cmdstan_model("gold.stan")
+fit <- mod$sample(data = stan_data, chains = 1, iter_sampling = 2000) #draws samples from the posterior distribution of parameters given data 
+```
+
+
+```{r}
+# data frame of posterior draws
+posterior_df <- fit$draws(c("rho", "alpha", "sigma")) %>%
+  posterior::as_draws_df()
+
+head(posterior_df)
+
+```
+```{r}
+# Posterior summaries (mean, sd, quantiles)
+posterior_summary <- posterior::summarise_draws(posterior_df)
+print(posterior_summary)
+
+```
+
+```{r}
+library(cmdstanr)
+library(posterior)
+library(ggplot2)
+#Extract posterior draws of f
+posterior <- fit$draws("f")   # extract only latent function draws
+f_array <- posterior %>% posterior::as_draws_matrix()
+
+# Summarize across posterior draws
+f_mean  <- apply(f_array, 2, mean)
+f_lower <- apply(f_array, 2, quantile, probs = 0.025)
+f_upper <- apply(f_array, 2, quantile, probs = 0.975)
+
+
+
+# Suppose your fitted object is called `fit`
+# Extract all draws for f
+f_draws <- fit$draws("f")
+
+# Convert to matrix (iterations × N)
+f_matrix <- as_draws_matrix(f_draws)
+
+
+dim(f_matrix)   #cols = N1 + N2
+
+# Pick, say, 20 random posterior draws
+set.seed(123)
+idx <- sample(1:nrow(f_matrix), 20)
+
+# Get subset for plotting
+f_samples <- f_matrix[idx, ]
+
+# Convert to tidy format for ggplot
+N <- ncol(f_matrix)
+f_df <- data.frame(
+  x = c(x1, x2),   # observed + forecast inputs
+  t(f_samples)     # transpose draws to align with x
+)
+
+# Reshape long
+f_long <- reshape2::melt(f_df, id.vars="x")
+
+ggplot(f_long, aes(x=x, y=value, group=variable)) +
+  geom_line(alpha=0.5, color="brown") +
+  geom_point(data=data.frame(x=x1, y=y1), aes(x, y), color="black") +
+  theme_minimal() +
+  labs(title="Posterior GP Sample Paths (Latent Function)",
+       x="Time", y="f(x)") 
+
+```
+
+```{r}
+# Extract all draws for f
+f_draws <- fit$draws("f")
+
+# Convert to matrix (iterations × N)
+f_matrix <- as_draws_matrix(f_draws)
+
+# Posterior mean and 95% CI for f
+f_mean <- apply(f_matrix, 2, mean)
+f_lower <- apply(f_matrix, 2, quantile, 0.025)
+f_upper <- apply(f_matrix, 2, quantile, 0.975)
+
+df_summary <- data.frame(
+  x = c(x1, x2),
+  mean = f_mean,
+  lower = f_lower,
+  upper = f_upper
+)
+
+# Plot posterior mean + CI
+ggplot(df_summary, aes(x=x, y=mean)) +
+  geom_ribbon(aes(ymin=lower, ymax=upper), fill="lightblue", alpha=0.4) +
+  geom_line(color="blue", size=1) +
+  geom_point(data=data.frame(x=x1, y=y1), aes(x, y), inherit.aes=FALSE, color="black", size=1) +
+  theme_minimal() +
+  labs(title="GP Posterior Mean with 95% Credible Interval",
+       x="Time", y="f(x)")
+
+```
+```{r}
+# Extract posterior summaries for latent f
+gp_summary <- fit$summary(variables = c("f"))
+
+# Rescale back to original data scale
+f_mean  <- gp_summary$mean
+f_sd    <- gp_summary$sd
+
+f_rescaled <- f_mean * y_sd + y_mean
+f_lower    <- (f_mean - 1.96 * f_sd) * y_sd + y_mean
+f_upper    <- (f_mean + 1.96 * f_sd) * y_sd + y_mean
+
+# Dimensions
+N1 <- length(x1)
+N2 <- length(x2)
+N  <- N1 + N2
+
+# Training (observed)
+df_train <- data.frame(
+  x = x1,
+  f_mean = f_rescaled[1:N1],
+  lower  = f_lower[1:N1],
+  upper  = f_upper[1:N1]
+)
+
+# Prediction (future)
+df_pred <- data.frame(
+  x = x2,
+  f_mean = f_rescaled[(N1+1):N],
+  lower  = f_lower[(N1+1):N],
+  upper  = f_upper[(N1+1):N]
+)
+
+```
+
+```{r}
+library(ggplot2)
+
+# Extract posterior summaries for latent f
+gp_summary <- fit$summary(variables = c("f"))
+
+# Rescale back to original data scale
+f_mean  <- gp_summary$mean
+f_sd    <- gp_summary$sd
+
+f_rescaled <- f_mean * y_sd + y_mean
+f_lower    <- (f_mean - 1.96 * f_sd) * y_sd + y_mean
+f_upper    <- (f_mean + 1.96 * f_sd) * y_sd + y_mean
+
+# Dimensions
+N1 <- length(x1)
+N2 <- length(x2)
+N  <- N1 + N2
+
+# Training
+df_train <- data.frame(
+  x = x1,
+  f_mean = f_rescaled[1:N1],
+  lower  = f_lower[1:N1],
+  upper  = f_upper[1:N1],
+  type = "Train"
+)
+
+# Prediction 
+df_pred <- data.frame(
+  x = x2,
+  f_mean = f_rescaled[(N1+1):N],
+  lower  = f_lower[(N1+1):N],
+  upper  = f_upper[(N1+1):N],
+  type = "Forecast"
+)
+
+
+df_plot <- rbind(df_train, df_pred)
+
+# Plot
+ggplot() +
+  # Observed data 
+  geom_point(data = data.frame(x = x1, y = as.numeric(y1) * y_sd + y_mean),
+             aes(x, y), color = "black", size = 1) +
+  # GP mean
+  geom_line(data = df_plot, aes(x, f_mean, color = type), size = 1) +
+  # GP credible interval
+  geom_ribbon(data = df_plot, aes(x, ymin = lower, ymax = upper, fill = type), alpha = 0.2) +
+  scale_color_manual(values = c("Train" = "blue", "Forecast" = "red")) +
+  scale_fill_manual(values = c("Train" = "blue", "Forecast" = "red")) +
+  theme_minimal() +
+  labs(title = "Gaussian Process Fit & Forecast on Gold Prices",
+       x = "Time", y = "Gold Price (USD)")
+
+```
+
+
+```{r}
+library(bayesplot)
+
+mcmc_dens(posterior_df, pars = c("rho", "alpha", "sigma"))
+mcmc_trace(posterior_df, pars = c("rho", "alpha", "sigma"))
+
+```
+ the gold price (after scaling) varies smoothly over ~4 days (ρ ≈ 4), with moderate signal variance (α ≈ 0.9) and relatively low observation noise (σ ≈ 0.18).
+
+The well-behaved trace plots confirm the posterior estimates are stable.
+
+
+
+```{r}
+library(forecast)
+
+# --- Fit ARIMA on training set only ---
+fit_arima <- auto.arima(as.numeric(y1))   # use scaled training data
+summary(fit_arima)
+
+# Forecast h steps ahead
+arima_forecast <- forecast(fit_arima, h = N2)
+
+# --- Build ARIMA forecast df ---
+df_arima_train <- data.frame(
+  x = x1,
+  mean  = fitted(fit_arima) * y_sd + y_mean
+)
+
+df_arima_forecast <- data.frame(
+  x = x2,
+  mean  = as.numeric(arima_forecast$mean) * y_sd + y_mean,
+  lower = as.numeric(arima_forecast$lower[,2]) * y_sd + y_mean,  # 95% CI
+  upper = as.numeric(arima_forecast$upper[,2]) * y_sd + y_mean
+)
+
+# --- Plot ---
+ggplot() +
+  # Observed data
+  geom_point(data = data.frame(x = x1, y = as.numeric(y1) * y_sd + y_mean),
+             aes(x, y), color = "black", size = 1) +
+  
+  # ARIMA training fit
+  geom_line(data = df_arima_train, aes(x, mean), color = "darkgreen", size = 1) +
+  
+  # ARIMA forecast
+  geom_line(data = df_arima_forecast, aes(x, mean), color = "green", size = 1) +
+  geom_ribbon(data = df_arima_forecast, 
+              aes(x, ymin = lower, ymax = upper), 
+              fill = "green", alpha = 0.2) +
+  
+  theme_minimal() +
+  labs(title = "ARIMA Training Fit & Forecast on Gold Prices",
+       x = "Time", y = "Gold Price (USD)")
+
+
+
+```
+```{r}
+library(forecast)
+
+# ARIMA to training data (first N1 points)
+fit_arima <- auto.arima(as.numeric(y1))   # gold$Close[1:N1] if not scaled
+summary(fit_arima)
+
+
+```
+Fit different models and forecast
+
+```{r}
+library(forecast)
+library(ggplot2)
+
+# --- ARIMA ---
+fit_arima <- auto.arima(ts_train)
+fc_arima  <- forecast(fit_arima, h=Ntest)
+
+df_arima_train <- data.frame(
+  x = 1:Ntrain,
+  f_mean = as.numeric(fitted(fit_arima)),
+  lower = NA, upper = NA,
+  type = "Train"
+)
+
+df_arima_pred <- data.frame(
+  x = (Ntrain+1):(Ntrain+Ntest),
+  f_mean = as.numeric(fc_arima$mean),
+  lower  = as.numeric(fc_arima$lower[,2]),
+  upper  = as.numeric(fc_arima$upper[,2]),
+  type = "Forecast"
+)
+
+df_arima <- rbind(df_arima_train, df_arima_pred)
+
+# --- LOESS trend model without season ---
+fit_loess <- tslm(ts_train ~ trend)   # only trend
+fc_loess  <- forecast(fit_loess, h=Ntest)
+
+df_loess_train <- data.frame(
+  x = 1:Ntrain,
+  f_mean = as.numeric(fitted(fit_loess)),
+  lower = NA, upper = NA,
+  type = "Train"
+)
+
+df_loess_pred <- data.frame(
+  x = (Ntrain+1):(Ntrain+Ntest),
+  f_mean = as.numeric(fc_loess$mean),
+  lower  = as.numeric(fc_loess$lower[,2]),
+  upper  = as.numeric(fc_loess$upper[,2]),
+  type = "Forecast"
+)
+
+df_loess <- rbind(df_loess_train, df_loess_pred)
+
+```
+
+```{r}
+library(forecast)
+library(ggplot2)
+library(splines)
+Ntotal <- length(ts_gold)
+Ntrain <- 1500
+Ntest  <-  100# Ntotal - Ntrain
+
+ts_train <- ts(ts_gold[1:Ntrain], frequency = frequency(ts_gold))
+ts_test  <- ts(ts_gold[(Ntrain+1):Ntotal], frequency = frequency(ts_gold))
+
+# --- ARIMA ---
+fit_arima <- auto.arima(ts_train)
+fc_arima  <- forecast(fit_arima, h=Ntest)
+
+df_arima_train <- data.frame(
+  x = 1:Ntrain,
+  f_mean = as.numeric(fitted(fit_arima)),
+  lower = NA, upper = NA,
+  type = "Train",
+  model = "ARIMA"
+)
+
+df_arima_pred <- data.frame(
+  x = (Ntrain+1):(Ntrain+Ntest),
+  f_mean = as.numeric(fc_arima$mean),
+  lower  = as.numeric(fc_arima$lower[,2]),
+  upper  = as.numeric(fc_arima$upper[,2]),
+  type = "Forecast",
+  model = "ARIMA"
+)
+
+df_arima <- rbind(df_arima_train, df_arima_pred)
+
+
+# --- LOESS trend only (via tslm with trend) ---
+fit_loess <- tslm(ts_train ~ trend)
+fc_loess  <- forecast(fit_loess, h=Ntest)
+
+df_loess_train <- data.frame(
+  x = 1:Ntrain,
+  f_mean = as.numeric(fitted(fit_loess)),
+  lower = NA, upper = NA,
+  type = "Train",
+  model = "LOESS Trend"
+)
+
+df_loess_pred <- data.frame(
+  x = (Ntrain+1):(Ntrain+Ntest),
+  f_mean = as.numeric(fc_loess$mean),
+  lower  = as.numeric(fc_loess$lower[,2]),
+  upper  = as.numeric(fc_loess$upper[,2]),
+  type = "Forecast",
+  model = "LOESS Trend"
+)
+
+df_loess <- rbind(df_loess_train, df_loess_pred)
+
+
+# --- Spline regression on training set ---
+time_idx <- 1:Ntrain
+fit_spline <- lm(ts_train ~ ns(time_idx, df = 10))   # ns = natural spline with 10 df
+fc_spline <- predict(fit_spline,
+                     newdata = data.frame(time_idx = (Ntrain+1):(Ntrain+Ntest)),
+                     se.fit = TRUE)
+
+df_spline_train <- data.frame(
+  x = 1:Ntrain,
+  f_mean = as.numeric(fitted(fit_spline)),
+  lower = NA, upper = NA,
+  type = "Train",
+  model = "Spline"
+)
+
+df_spline_pred <- data.frame(
+  x = (Ntrain+1):(Ntrain+Ntest),
+  f_mean = fc_spline$fit,
+  lower  = fc_spline$fit - 1.96*fc_spline$se.fit,
+  upper  = fc_spline$fit + 1.96*fc_spline$se.fit,
+  type = "Forecast",
+  model = "Spline"
+)
+
+df_spline <- rbind(df_spline_train, df_spline_pred)
+
+
+# --- Naïve / Random Walk Forecast ---
+fit_naive <- naive(ts_train, h=Ntest)
+
+df_naive_train <- data.frame(
+  x = 1:Ntrain,
+  f_mean = as.numeric(fitted(fit_naive)),
+  lower = NA, upper = NA,
+  type = "Train",
+  model = "Naive"
+)
+
+df_naive_pred <- data.frame(
+  x = (Ntrain+1):(Ntrain+Ntest),
+  f_mean = as.numeric(fit_naive$mean),
+  lower  = as.numeric(fit_naive$lower[,2]),
+  upper  = as.numeric(fit_naive$upper[,2]),
+  type = "Forecast",
+  model = "Naive"
+)
+
+df_naive <- rbind(df_naive_train, df_naive_pred)
+
+
+# --- Combine all models ---
+df_all <- rbind(df_arima, df_loess, df_spline, df_naive)
+
+geom_point(
+  data = data.frame(
+    x = 1:(Ntrain+Ntest),
+    y = as.numeric(c(ts_train, ts_test[1:Ntest]))
+  ),
+  aes(x, y), inherit.aes = FALSE, color = "black", size = 1
+)
+
+geom_point(
+  data = data.frame(
+    x = 1:(Ntrain+Ntest),
+    y = as.numeric(c(ts_train, ts_test[1:Ntest]))
+  ),
+  aes(x, y),
+  inherit.aes = FALSE, color = "black", size = 1
+)
+
+# --- Plot ---
+ggplot(df_all, aes(x, f_mean, color = model, linetype = type)) +
+  geom_line(size = 1) +
+  geom_ribbon(aes(ymin = lower, ymax = upper, fill = model),
+              alpha = 0.15, color = NA) +
+  geom_point(data = data.frame(x = 1:(Ntrain+Ntest),
+                               y = as.numeric(c(ts_train, ts_test))),
+             aes(x, y), inherit.aes = FALSE, color = "black", size = 1) +
+  theme_minimal() +
+  labs(title = "Gold Price Forecasts by Multiple Models",
+       x = "Time", y = "Gold Price (USD)")
+
+```
+
+
+
+
+
+
+```{r}
+
+# Total obs = 1718
+Ntrain <- 1500
+Ntest  <- 100   
+
+# Training inputs/outputs
+x1 <- 1:Ntrain
+y1 <- scale(gold$Close[1:Ntrain], center = TRUE, scale = TRUE)
+
+
+x2 <- (Ntrain+1):(Ntrain+Ntest)
+
+stan_data <- list(
+  N1 = length(x1),
+  x1 = as.array(x1),
+  y1 = as.vector(y1),
+  N2 = length(x2),
+  x2 = as.array(x2)
+)
+
+library(cmdstanr)
+mod <- cmdstan_model("gold.stan")
+fit <- mod$sample(data = stan_data, chains = 1, iter_sampling = 2000, seed = 123)
+
+
+```
+
+model 2 
+```{r}
+library(cmdstanr)
+ 
+Ntrain <- 1500                  # training length
+Ntest  <- 100                   # forecast horizon
+
+x1 <- (1:Ntrain) / Ntrain       # scaled training inputs
+y1 <- scale(gold$Close[1:Ntrain], center = TRUE, scale = TRUE)
+x2 <- ((Ntrain+1):(Ntrain+Ntest)) / Ntrain   # scaled future inputs
+
+stan_data <- list(
+  N1 = length(x1),
+  x1 = as.array(x1),    # array of reals
+  y1 = as.vector(y1),   # vector
+  N2 = length(x2),
+  x2 = as.array(x2)
+)
+
+mod <- cmdstan_model("gold2.stan")
+fit <- mod$sample(
+  data = stan_data,
+  chains = 2,
+  iter_sampling = 1000
+)
+
+```
+```{r}
+# Extract posterior samples for f
+f_draws <- fit$draws("f")         # posterior draws for latent function
+f_summary <- fit$summary("f")     # mean, sd, quantiles
+
+# Split into training and forecast parts
+N1 <- length(x1)
+N2 <- length(x2)
+
+f_train <- f_summary$mean[1:N1]
+f_forecast <- f_summary$mean[(N1+1):(N1+N2)]
+
+f_train_lower <- f_summary$q5[1:N1]
+f_train_upper <- f_summary$q95[1:N1]
+f_forecast_lower <- f_summary$q5[(N1+1):(N1+N2)]
+f_forecast_upper <- f_summary$q95[(N1+1):(N1+N2)]
+
+```
+
+
+
