@@ -1,4 +1,5 @@
-\documentclass[a4paper, 10pt]{article}
+\documentclass[a4paper, 10pt, fleqn]{article}
+\setlength{\mathindent}{0pt}
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage[justification=centering]{caption}
@@ -75,7 +76,7 @@
    $$m(\mathbf{x}) = \mathbb{E}[f(\mathbf{x})],$$
    $$k(\mathbf{x}, \mathbf{x}') = \mathbb{E}[(f(\mathbf{x}) - m(\mathbf{x}))(f(\mathbf{x}') - m(\mathbf{x}'))],$$
    and will write the Gaussian process as
-   $$f(\mathbf{x}) \sim \text{GP}(m(\mathbf{x}), k(\mathbf{x}, \mathbf{x}')).$$
+   $$f(\mathbf{x}) \sim \text{GP}(m(\mathbf{x}), \, k(\mathbf{x}, \mathbf{x}')).$$
 
    $\mathbf{x} =
    \begin{bmatrix}
@@ -224,7 +225,7 @@
 
    \vspace{1em}
 
-   $\mathbf{m} = 
+   $$\mathbf{m} = 
    \begin{bmatrix}
       \mathbf{m}_{\text{obs}} \\
       \\
@@ -237,8 +238,8 @@
    \begin{bmatrix}
       \mathbf{K}_{\text{obs}} & \mathbf{K}_{\text{mix}} \\
       \\
-      (\mathbf{K}_{\text{mix}})^{T} & \mathbf{K}_{\text{pred}}
-   \end{bmatrix}$.
+      (\mathbf{K}_{\text{mix}})^{\text{T}} & \mathbf{K}_{\text{pred}}
+   \end{bmatrix}$$.
 
    \vspace{1em}
 
@@ -248,11 +249,11 @@
 
    with the location parameters 
 
-   $$\boldsymbol{\mu} = \mathbf{m}_{\text{pred}} + (\mathbf{K}_{\text{mix}})^{T} \cdot (\mathbf{K}_{\text{obs}})^{-1} \cdot (\mathbf{f}_{\text{obs}} - \mathbf{m}_{\text{obs}}) $$
+   $$\boldsymbol{\mu} = \mathbf{m}_{\text{pred}} + (\mathbf{K}_{\text{mix}})^{\text{T}} \cdot (\mathbf{K}_{\text{obs}})^{-1} \cdot (\mathbf{f}_{\text{obs}} - \mathbf{m}_{\text{obs}}) $$
 
    and the covariance matrix parameters
 
-   $$\boldsymbol{\Sigma} = \mathbf{K}_{\text{pred}} - (\mathbf{K}_{\text{mix}})^{T} \cdot (\mathbf{K}_{\text{obs}})^{-1} \cdot \mathbf{K}_{\text{mix}}.$$
+   $$\boldsymbol{\Sigma} = \mathbf{K}_{\text{pred}} - (\mathbf{K}_{\text{mix}})^{\text{T}} \cdot (\mathbf{K}_{\text{obs}})^{-1} \cdot \mathbf{K}_{\text{mix}}.$$
 
    Inference with Gaussian process priors proceeds similarly. Once we've identified the covariate values at which we have observations or will want to make predictions we can specify the marginalized prior model with the corresponding multivariate normal density function. If the observational model is normal then we can generate predictions analytically with the conditioning operations for the posterior covariance function.
 
@@ -298,14 +299,6 @@
       \end{figure}
 
       Our response variable $\text{NO}_{2}$ appears to be moderately positively correlated with $\text{PM}_{10}$ and $\text{SO}_{2}$, and moderately negatively correlated with Speed. These are not ideal explanatory variables since we typically would like them to be strongly correlated with the response variable. The explanatory variables are weekly correlated with one another, whether it be positive or negative correlation. This is ideal since some models do not work well with correlated explanatory variables, often leading to unstable point estimates and inflated standard errors.
-
-      \vspace{1em}
-
-      Before looking at the data. The proposal mean function is $f(x_{t}) = x_{t}^{T} \beta + e$ and the proposal covariance function is $g(x_{i}, x_{j}) = \alpha^{2} \text{exp}(- \frac{1}{2} (\frac{|x_i - x_j|}{\rho})^2) + \sigma\delta_{ij} \, \text{for} \, i,j \in \mathcal{I}$. This allows us to capture the trend (if it exists) in the time series. This also allows us to capture the correlation structure of the data. The squared-exponential kernel is chosen because it is a natural way of describing the correlation decay.
-
-      \vspace{1em}
-
-      The prior distributions of the exponantiated quadratic kernel are the following: $\alpha \sim \text{half-normal}(0, 1)$, $\rho \sim \mathcal{IG}(20, 10)$, and $\sigma \sim \text{half-normal}(0, 1)$.
 
       \begin{figure}[H]
          \centering
@@ -389,6 +382,63 @@
          \caption{\textit{Comparison of NO\textsubscript{2} time series before and after transformations.}}
       \end{figure}
 
+      \subsection*{Model formulation}
+
+         \textbf{Priors}
+
+         \[\alpha \sim \text{half-normal}(0, \, \tau^2)\]
+         \begin{align*}
+            \pi(\alpha) 
+            & = \frac{2}{\sqrt{2\pi\tau^2}} \text{exp}(-\frac{\alpha^2}{2\tau^2})\\
+            & \propto \text{exp}(-\frac{\alpha^2}{2\tau^2})\\
+            & \text{for } \alpha \geq 0.
+         \end{align*}
+
+         \[\rho \sim \text{Inverse-Gamma}(\lambda, \, \beta)\]
+         \begin{align*}
+            \pi(\rho)
+            & = \frac{\beta^{\lambda}}{\Gamma(\lambda)} \rho^{-\lambda-1} \text{exp}(-\frac{\beta}{\rho})\\
+            & \propto \rho^{-\lambda-1} \text{exp}(-\frac{\beta}{\rho})\\
+            & \text{for } \rho > 0.
+         \end{align*}
+
+         \[\sigma \sim \text{half-normal}(0, \, \phi^2)\]
+         \begin{align*}
+            \pi(\sigma)
+            & = \frac{2}{\sqrt{2\pi\phi^2}} \text{exp}(-\frac{\sigma^2}{2\phi^2})\\
+            & \propto \text{exp}(-\frac{\sigma^2}{2\phi^2})\\
+            & \text{for } \sigma \geq 0.
+         \end{align*}
+
+         \textbf{Likelihood}
+
+         \[f(\mathbf{x}) \sim \text{GP}(m(\mathbf{x}) ,\, k(\mathbf{x}, \mathbf{x}'))\]
+         \[\mathbf{x} \sim \mathcal{N}_{p}(\mathbf{m} ,\, \mathbf{K})\]
+         \begin{align*}
+            \mathcal{L}(\mathbf{m} ,\, \mathbf{K} ,\, \mathbf{x}| \, \alpha ,\, \rho ,\, \sigma)
+            & = (2\pi)^{-\frac{p}{2}}\text{det}(\mathbf{K})^{-\frac{1}{2}} 
+            \text{exp} (-\frac{1}{2} (\mathbf{x} - \mathbf{m})^{\text{\text{T}}} \mathbf{K}^{-1} (\mathbf{x} - \mathbf{m}))\\
+            & \propto \text{det}(\mathbf{K})^{-\frac{1}{2}} 
+            \text{exp} (-\frac{1}{2} (\mathbf{x} - \mathbf{m})^{\text{\text{T}}} \mathbf{K}^{-1} (\mathbf{x} - \mathbf{m}))\\
+            & \text{for } \mathbf{x} \in \mathbb{R}^{p}.
+         \end{align*}
+
+         \textbf{Posterior}
+         
+         \begin{align*}
+            \pi(\alpha,\, \rho,\, \sigma| \, \mathbf{x}) 
+            & \propto \mathcal{L}(\mathbf{m},\, \mathbf{K},\, \mathbf{x}| \, \alpha,\, \rho,\, \sigma) 
+            \cdot \pi(\alpha) 
+            \cdot \pi(\rho) 
+            \cdot \pi(\sigma)\\
+            & \propto \text{det}(\mathbf{K})^{-\frac{1}{2}} 
+            \text{exp} (-\frac{1}{2} (\mathbf{x} - \mathbf{m})^{\text{\text{T}}} \mathbf{K}^{-1} (\mathbf{x} - \mathbf{m}))
+            \cdot \text{exp}(-\frac{\alpha^2}{2\tau^2}) 
+            \cdot \rho^{-\lambda-1} \text{exp}(-\frac{\beta}{\rho}) 
+            \cdot \text{exp}(-\frac{\sigma^2}{2\phi^2})\\
+            & \text{for } \alpha \geq 0,\ \rho > 0,\ \sigma \geq 0.
+         \end{align*}
+
       \subsection*{Results}
 
       \begin{table}[H]
@@ -399,14 +449,16 @@
          \cline{2-7}
          & \multicolumn{3}{c}{Forecasts} & \multicolumn{3}{c}{Forecasts} \\
          & \multicolumn{3}{c}{($h$ day time horizon)} & \multicolumn{3}{c}{($h$ day time horizon)} \\
-         & 24 & 168 & 720 & 24 & 168 & 720 \\
+         & 24 & 168 & 744 & 24 & 168 & 744 \\
          \hline
-         Average & 8.61 & 7.16 & 6.62 & 8.54 & 6.48 & 5.73 \\
-         Naive & 1.35 & 5.58 & 7.10 & 1.00 & 3.59 & 4.80 \\
-         SNaive & 3.72 & 5.71 & 7.21 & 2.48 & 4.05 & 5.28 \\
-         Drift & 1.35 & 5.59 & 7.16 & 1.00 & 3.60 & 4.86 \\
-         ARIMA & 5.01 & 6.46 & 6.45 & 4.91 & 5.81 & 5.57 \\
-         GP & \textcolor{red}{6.07} & \textcolor{red}{8.73} & \textcolor{red}{10.72} & \textcolor{red}{5.47} & \textcolor{red}{7.29} & \textcolor{red}{9.14} \\
+         Average & {7.731} & \textbf{\textcolor{red}{5.397}} & {7.439} & \textbf{\textcolor{red}{6.042}} & \textbf{\textcolor{red}{4.254}} & {5.385} \\
+         Naive & {10.553} & {7.864} & {10.040} & {7.708} & {6.071} & {7.308} \\
+         Drift & {10.606} & {8.128} & {11.358} & {7.764} & {6.391} & {8.809} \\
+         AR(1) & {8.662} & {5.912} & {8.044} & {6.029} & {4.422} & {5.616} \\
+         GP-0-WN & {13.756} & {11.141} & {13.169} & {11.719} & {9.786} & {11.081} \\
+         GP-0-SE & {~} & {~} & {~} & {~} & {~} & {~} \\
+         GP-MLR-WN & \textbf{\textcolor{red}{7.692}} & {6.134} & \textbf{\textcolor{red}{7.225}} & {6.119} & {4.490} & \textbf{\textcolor{red}{5.136}} \\
+         GP-MLR-SE & {~} & {~} & {~} & {~} & {~} & {~} \\
          \hline
          \end{tabular}
          \caption{\textit{RMSE and MAE of forecasting models across horizons.}}
