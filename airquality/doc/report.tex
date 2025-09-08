@@ -22,7 +22,7 @@
       \centering
 
       \vspace*{2cm}
-      \includegraphics[width=0.48\linewidth]{../img/UCT logo circular blue large.png}
+      \includegraphics[width=0.24\linewidth]{../img/UCT logo circular blue large.png}
 
       \vspace*{2cm}
 
@@ -63,7 +63,128 @@
 
    \section*{Literature Review}
 
-   ((\hyperref[Rasmussen2006]{Rasmussen and Williams, 2006})) We have a training set of $\mathcal{D}$ of $n$ observations, $\mathcal{D} = \{(\mathbf{x}_{i}, y_{i}) \, | \, i = 1, \, \ldots, \, n\}$, where $\mathbf{x}$ denotes the input vector (covariates) of dimension $\mathcal{D}$ and y denotes a scalar output or target (dependent variable); the column vector of inputs for all n cases are arranged in the $\mathcal{D} \times n \, design \, matrix\, X$, and the targets are collected in the vector $\mathbf{y}$, so we can write $\mathcal{D} = (X, \mathbf{y})$. 
+      ((\hyperref[Rasmussen2006]{Rasmussen and Williams, 2006})) We have a training set of $\mathcal{D}$ of $n$ observations, $\mathcal{D} = \{(\mathbf{x}_{i}, y_{i}) \, | \, i = 1, \, \ldots, \, n\}$, where $\mathbf{x}$ denotes the input vector (covariates) of dimension $\mathcal{D}$ and y denotes a scalar output or target (dependent variable); the column vector of inputs for all n cases are arranged in the $\mathcal{D} \times n \, design \, matrix\, X$, and the targets are collected in the vector $\mathbf{y}$, so we can write $\mathcal{D} = (X, \mathbf{y})$. 
+
+      \vspace{1em}
+
+      \textbf{Definition 2.1.1} ((\hyperref[Watson2025]{Watson, 2025})). \textit{A time series is a sequence of observations collected at regular equally spaced intervals over a period of time.}
+
+      \vspace{1em}
+
+      Time series data are extremely common. They arize in virtually every application field, such as business (sales figures, production numbers, and customer frequencies), economics (stock prices, exchange rates, and interest rates), and official statistics (census data, personal expenditures, and road casualities).
+
+      \vspace{1em}
+
+      \textbf{Definition 2.1.2} ((\hyperref[Watson2025]{Watson, 2025})). \textit{Time series analysis is a collection of statistical techniques that attempt to isolate and quantify the influence of events and changes in conditions in order to build a model that utilizes this information to forecast future values of the time series.}
+
+      \vspace{1em}
+
+      Standard inferential techniques which assume independence of observations (e.g. regression) do not work well when data is collected at regular equally spaced time intervals because the observations are likely to be dependent. When this dependence occurs between observations $g$ time periods apart, it is called `autocorrelation' at lag $g$. So we cannot assume that the data consitute a random sample.
+
+      \vspace{1em}
+
+      The basic assumption underlying time series forecasting is that the factors that influence patterns of activity in past and present will continue to do so in more or less the same manner in the future. Thus the overall purpose of time series analysis is to identify and isolate these influencing factors from the past in order to better understand the process underlying the time series, for predictive purposes.
+
+      \vspace{1em}
+
+      \textbf{Definition 2.1.3} ((\hyperref[Watson2025]{Watson, 2025})). \textit{A time series is said to be stationary if it's statistical properties are constant over time. This implies that the time series has a constant mean and variance over time.}
+
+      \vspace{1em}
+
+      Most time series we encounter are non-stationary and we often need to transform them so that they exhibit stationarity. These transformations enable us to consider what other information exists in the data after we have removed the effect of a trend or seasonality and/or changing variance.
+
+      \subsubsection*{Time series plot}
+
+      The first step in time series analysis is to plot the data and observe any patterns that have occurred over time using a line graph. The time series plot enables us to detect and describe components of past behavior of the series. The identified components help in finding a suitable statistical model to decribe the data, which enables us to forecast future values of the time series.
+
+      \vspace{1em}
+
+      Components of a non-stationary time series are:
+      \begin{itemize}
+         \item Trend
+         \item Cyclical variation
+         \item Seasonal variation
+         \item Random variation
+      \end{itemize}
+
+      \vspace{1em}
+
+      \textbf{\textit{Trend}}: The long-term tendency of a time series. The pattern observed may move steadily in an upward or downward direction, or stay the same over time.
+
+      \vspace{1em}
+
+      \textbf{\textit{Cyclical variation}}: Irregular long-term wavelike movements through a time series. Due to extendend periods of prosperity followed by extended periods of recession.
+
+      \vspace{1em}
+
+      \textbf{\textit{Seasonal variation}}: Regular short-term repetitive wavelike movements through a time series, often when data is recorded houly, daily, weekly, monthly or quarterly. It repeats itself through the time series.
+
+      \vspace{1em}
+
+      \textbf{\textit{Random variation}}: Random variations in the data due to the combined effects of all unforeseen events such as war, strikes, natural disasters, power cuts, etc. 
+
+      \vspace{1em}
+
+      The simplest assumption about the relationship between the components in a time series is that they are additive and independent of each other.
+
+      \vspace{1em}
+
+      We write the additive model as: $$Y_{t} = T_{t} + C_{t} + S_{t} + R_{t},$$
+      $$where$$
+      - $t$ is the time period we are interested in\\
+      - $Y_{t}$ is the observed value of the time series at time period $t$\\
+      - $T_{t}$ is the value of the trend component at time $t$\\
+      - $C_{t}$ is the value of the cyclical component at time $t$\\
+      - $S_{t}$ is the value of the seasonal component at time $t$\\
+      - $R_{t}$ is the value of the random component at time $t$.
+
+      \vspace{1em}
+
+      Alternatively, we can assume that the four components of the time series are not necessarily independent and can affect one another. This is captured by the multiplicative model as: $$Y_{t} = T_{t} \times C_{t} \times S_{t} \times R_{t}.$$ Note that this can be made additive by taking the logarithm of the series.
+
+      \vspace{1em}
+
+      The additive model is most appropriate if the magnitude of the seasonal fluctuations or variation around the trend-cycle does not vary with the level of the time series. When the variation in seasonal pattern, or the variation around the trend-cycle, appears to be proportional to the level of the time series, then a multiplicative model is more appropriate. 
+
+    \subsection*{Simple forecasting models}
+
+      ((\hyperref[Watson2025]{Watson, 2025})) There are some forecasting methods that are simple, yet remarkably effective for some time series.
+
+      \vspace{1em}
+      
+      We fit simple forecasting methods to use as `benchmarks' against which we compare other more complex forecasting methods i.e. if a more complicated forecasting method does not yield better forecasts than one of the simple methods here, there is no need to use it for the particular time series analysed.
+
+      \vspace{1em}
+
+      There are four simple forecasting methods that we consider:
+      \begin{itemize}
+         \item The average method
+         \item The naive method
+         \item The seasonal naive method
+         \item The drift method
+      \end{itemize}
+
+      \vspace{1em}
+
+      \textbf{\textit{Average method}}: the forecasts of all future values is the mean of the historical data: $$\hat{y}_{T+h|T} = \frac{\sum_{t=1}^{T} y_{t}}{T}.$$
+
+      The notation $\hat{y}_{T+h|T}$ is a short-hand for the estimate of $y_{T+h|T}$ based on the data $\{y_{1},\, \ldots,\, y_{T}\}$.
+
+      \vspace{1em}
+
+      \textbf{\textit{Naive method}}: the forecasts of all future values is the last observation: $$\hat{y}_{T+h|T} = y_{T}.$$
+
+      \textbf{\textit{Seasonal naive method}}: this is similar to the naive method, used when we have a time series with a strong seasonal component. The forecasted value for a particular `season' is simply the value corresponding to the previous `season': $$\hat{y}_{T+h|T} = y_{T+h-m(k+1)},$$
+
+      Where $m$ is the seasonal period and $k$ is the integer part of $(h-1)/m$ i.e. the number of complete seasonal variations that have passed since the end of the original time series data.
+
+      \vspace{1em}
+
+      For example, if our time series is montly data and a seasonal variation lasts 12 months, then the future forecasts for all April values is simply the previous April value. If our time series is quartely data and a season lasts 4 quarters, then the future forecasts for all quarter 3 values is the previous quarter 3 value etc.
+
+      \vspace{1em}
+
+      \textbf{\textit{Drift method}}: An extension of the naive method to allow for the presence of a linear trend in the data. The amount of change over time (called the `drift') is equal to the average change in the historical data: $$\hat{y}_{T+h|T} = y_{T} + h(\frac{y_{T} - y_{1}}{T-1}).$$
 
    \vspace{1em}
 
@@ -72,11 +193,11 @@
 
    \vspace{1em}
 
-   A Gaussian process is completely specified by its mean function and co-variance function. We define mean mean function $m(\mathbf{x})$ and the covariance function $k(\mathbf{x}, \mathbf{x}')$ for a real process $f(\mathbf{x})$ as
-   $$m(\mathbf{x}) = \mathbb{E}[f(\mathbf{x})],$$
-   $$k(\mathbf{x}, \mathbf{x}') = \mathbb{E}[(f(\mathbf{x}) - m(\mathbf{x}))(f(\mathbf{x}') - m(\mathbf{x}'))],$$
+   A Gaussian process is completely specified by its mean function and co-variance function. We define mean mean function $m(x_{i})$ and the covariance function $k(x_{i},\, x_{j})$ for a real process $\{X_{i}\}_{i \in \mathcal{I}}$ as
+   $$m(x_{i}) = \mathbb{E}[X_{i}],$$
+   $$k(x_{i},\, x_{j}) = \mathbb{E}[(X_{i} - m(x_{i}))(X_{j} - m(x_{j}))],$$
    and will write the Gaussian process as
-   $$f(\mathbf{x}) \sim \text{GP}(m(\mathbf{x}), \, k(\mathbf{x}, \mathbf{x}')).$$
+   $$X_{i} \sim \text{GP}(m(x_{i}), \, k(x_{i},\, x_{j})).$$
 
    $\mathbf{x} =
    \begin{bmatrix}
@@ -109,7 +230,7 @@
    
    \vspace{1em}
 
-   Consider a simple example shown in Figure~\ref{figure_1}, where $m(\mathbf{x}) = \mathbf{x} \, \text{and} \, k(\mathbf{x}, \mathbf{x}') = \text{I}_{p}$. 
+   Consider a simple example shown in Figure~\ref{figure_1}, where $m(x_{i}) = x_{i} \, \text{and} \, k(x_{i},\, x_{j}) = 1 \text{ for } i=j \text{ and } k(x_{i},\, x_{j}) = 0 \text{ otherwise}$. 
 
    \begin{figure}[H]
       \centering
@@ -221,7 +342,7 @@
 
    \vspace{1em}
    
-   more compactly,
+   more compactly
 
    \vspace{1em}
 
@@ -245,11 +366,11 @@
 
    The conditional probability density function for the unobserved function values $(f_{\text{pred}})_{n} = f(x_{n}^{\text{pred}})$ given the observed function values  $(f_{\text{obs}})_{n} = f(x_{n}^{\text{obs}})$ falls into the multivariate normal family,
 
-   $$\pi(\mathbf{f}_{\text{pred}} | \mathbf{f}_{\text{obs}}) \sim \mathcal{N}_{n}(\boldsymbol{\mu}, \boldsymbol{\Sigma})$$
+   $$\pi(\mathbf{f}_{\text{pred}} | \mathbf{f}_{\text{obs}}) \sim \mathcal{N}_{n}(\boldsymbol{\mu}, \boldsymbol{\Sigma}),$$
 
    with the location parameters 
 
-   $$\boldsymbol{\mu} = \mathbf{m}_{\text{pred}} + (\mathbf{K}_{\text{mix}})^{\text{T}} \cdot (\mathbf{K}_{\text{obs}})^{-1} \cdot (\mathbf{f}_{\text{obs}} - \mathbf{m}_{\text{obs}}) $$
+   $$\boldsymbol{\mu} = \mathbf{m}_{\text{pred}} + (\mathbf{K}_{\text{mix}})^{\text{T}} \cdot (\mathbf{K}_{\text{obs}})^{-1} \cdot (\mathbf{f}_{\text{obs}} - \mathbf{m}_{\text{obs}}),$$
 
    and the covariance matrix parameters
 
@@ -364,7 +485,7 @@
 
       \subsection*{Components of the time series}     
 
-      The response variable time-series $x_{t}$ is not statationary because the mean and variance are changing with time. To achieve stationarity there is a need for detrending and a variance stabilizing transformation. In order to stabilize the variance we use Box-Cox transformations in the training set, $y_{t} = (x_{t}^{\lambda} - 1) / \lambda$. The Box-Cox transformations allow us to experiment with a wide variety of $\lambda$ values. A good value of $\lambda$ is one the makes the variation in the data constant through time (Neil Watson, 2024). The \texttt{R} package \texttt{forecast} was used to perform the Box-Cox transformation which yielded an optimal value of $\hat{\lambda} \approx 0$, suggesting a logarithmic transformation. Then, conducting first-order differencing at lag one to remove the trend $z_{t} = y_{t} - y_{t-1} \, \text{for} \, t \in \{2, \, 3, \, \ldots, \, p\}$. The time series $z_{t}$ is now stationary. Thus, we only need to account for the mean and variance in our models.      
+      The response variable time-series $x_{t}$ is not statationary because the mean and variance are changing with time. To achieve stationarity there is a need for detrending and a variance stabilizing transformation. In order to stabilize the variance we use Box-Cox transformations in the training set, $y_{t} = (x_{t}^{\lambda} - 1) / \lambda$. The Box-Cox transformations allow us to experiment with a wide variety of $\lambda$ values. A good value of $\lambda$ is one the makes the variation in the data constant through time (\hyperref[Watson2025]{Watson, 2025}). The \texttt{R} package \texttt{forecast} was used to perform the Box-Cox transformation which yielded an optimal value of $\hat{\lambda} \approx 0$, suggesting a logarithmic transformation. Then, conducting first-order differencing at lag one to remove the trend $z_{t} = y_{t} - y_{t-1} \, \text{for} \, t \in \{2, \, 3, \, \ldots, \, p\}$. The time series $z_{t}$ is now stationary. Thus, we only need to account for the mean and variance in our models.      
 
       \begin{figure}[H]
          \centering
@@ -383,61 +504,76 @@
       \end{figure}
 
       \subsection*{Model formulation}
+         \subsubsection*{Bayesian Approach}
 
-         \textbf{Priors}
+            \textbf{\textit{Priors}}
 
-         \[\alpha \sim \text{half-normal}(0, \, \tau^2)\]
-         \begin{align*}
-            \pi(\alpha) 
-            & = \frac{2}{\sqrt{2\pi\tau^2}} \text{exp}(-\frac{\alpha^2}{2\tau^2})\\
-            & \propto \text{exp}(-\frac{\alpha^2}{2\tau^2})\\
-            & \text{for } \alpha \geq 0.
-         \end{align*}
+            \[\alpha \sim \text{half-normal}(0, \, \tau^2).\]
+            \begin{align*}
+               \pi(\alpha) 
+               & = \frac{2}{\sqrt{2\pi\tau^2}} \text{exp}(-\frac{\alpha^2}{2\tau^2}), \text{ for } \alpha \geq 0,\\
+               & \propto \text{exp}(-\frac{\alpha^2}{2\tau^2}).
+            \end{align*}
 
-         \[\rho \sim \text{Inverse-Gamma}(\lambda, \, \beta)\]
-         \begin{align*}
-            \pi(\rho)
-            & = \frac{\beta^{\lambda}}{\Gamma(\lambda)} \rho^{-\lambda-1} \text{exp}(-\frac{\beta}{\rho})\\
-            & \propto \rho^{-\lambda-1} \text{exp}(-\frac{\beta}{\rho})\\
-            & \text{for } \rho > 0.
-         \end{align*}
+            \[\rho \sim \text{Inverse-Gamma}(\lambda, \, \beta).\]
+            \begin{align*}
+               \pi(\rho)
+               & = \frac{\beta^{\lambda}}{\Gamma(\lambda)} \rho^{-\lambda-1} \text{exp}(-\frac{\beta}{\rho}), \text{ for } \rho > 0,\\
+               & \propto \rho^{-\lambda-1} \text{exp}(-\frac{\beta}{\rho}).
+            \end{align*}
 
-         \[\sigma \sim \text{half-normal}(0, \, \phi^2)\]
-         \begin{align*}
-            \pi(\sigma)
-            & = \frac{2}{\sqrt{2\pi\phi^2}} \text{exp}(-\frac{\sigma^2}{2\phi^2})\\
-            & \propto \text{exp}(-\frac{\sigma^2}{2\phi^2})\\
-            & \text{for } \sigma \geq 0.
-         \end{align*}
+            \[\sigma \sim \text{half-normal}(0, \, \phi^2).\]
+            \begin{align*}
+               \pi(\sigma)
+               & = \frac{2}{\sqrt{2\pi\phi^2}} \text{exp}(-\frac{\sigma^2}{2\phi^2}), \text{ for } \sigma \geq 0,\\
+               & \propto \text{exp}(-\frac{\sigma^2}{2\phi^2}).
+            \end{align*}
 
-         \textbf{Likelihood}
+            \textbf{\textit{Likelihood function}}
 
-         \[f(\mathbf{x}) \sim \text{GP}(m(\mathbf{x}) ,\, k(\mathbf{x}, \mathbf{x}'))\]
-         \[\mathbf{x} \sim \mathcal{N}_{p}(\mathbf{m} ,\, \mathbf{K})\]
-         \begin{align*}
-            \mathcal{L}(\mathbf{m} ,\, \mathbf{K} ,\, \mathbf{x}| \, \alpha ,\, \rho ,\, \sigma)
-            & = (2\pi)^{-\frac{p}{2}}\text{det}(\mathbf{K})^{-\frac{1}{2}} 
-            \text{exp} (-\frac{1}{2} (\mathbf{x} - \mathbf{m})^{\text{\text{T}}} \mathbf{K}^{-1} (\mathbf{x} - \mathbf{m}))\\
-            & \propto \text{det}(\mathbf{K})^{-\frac{1}{2}} 
-            \text{exp} (-\frac{1}{2} (\mathbf{x} - \mathbf{m})^{\text{\text{T}}} \mathbf{K}^{-1} (\mathbf{x} - \mathbf{m}))\\
-            & \text{for } \mathbf{x} \in \mathbb{R}^{p}.
-         \end{align*}
+            \[\text{Since } X_{i} \sim \text{GP}(m(x_{i}) ,\, k(x_{i},\, x_{j})) \text{ then } \mathbf{x} \sim \mathcal{N}_{p}(\mathbf{m} ,\, \mathbf{K}).\]
+            \begin{align*}
+               \mathcal{L}(\mathbf{m} ,\, \mathbf{K} ,\, \mathbf{x}| \, \alpha ,\, \rho ,\, \sigma)
+               & = (2\pi)^{-\frac{p}{2}}\text{det}(\mathbf{K})^{-\frac{1}{2}} 
+               \text{exp} (-\frac{1}{2} (\mathbf{x} - \mathbf{m})^{\text{\text{T}}} \mathbf{K}^{-1} (\mathbf{x} - \mathbf{m})),
+               \text{ for } \mathbf{x} \in \mathbb{R}^{p},\\
+               & \propto \text{det}(\mathbf{K})^{-\frac{1}{2}} 
+               \text{exp} (-\frac{1}{2} (\mathbf{x} - \mathbf{m})^{\text{\text{T}}} \mathbf{K}^{-1} (\mathbf{x} - \mathbf{m})).
+            \end{align*}
 
-         \textbf{Posterior}
-         
-         \begin{align*}
-            \pi(\alpha,\, \rho,\, \sigma| \, \mathbf{x}) 
-            & \propto \mathcal{L}(\mathbf{m},\, \mathbf{K},\, \mathbf{x}| \, \alpha,\, \rho,\, \sigma) 
-            \cdot \pi(\alpha) 
-            \cdot \pi(\rho) 
-            \cdot \pi(\sigma)\\
-            & \propto \text{det}(\mathbf{K})^{-\frac{1}{2}} 
-            \text{exp} (-\frac{1}{2} (\mathbf{x} - \mathbf{m})^{\text{\text{T}}} \mathbf{K}^{-1} (\mathbf{x} - \mathbf{m}))
-            \cdot \text{exp}(-\frac{\alpha^2}{2\tau^2}) 
-            \cdot \rho^{-\lambda-1} \text{exp}(-\frac{\beta}{\rho}) 
-            \cdot \text{exp}(-\frac{\sigma^2}{2\phi^2})\\
-            & \text{for } \alpha \geq 0,\ \rho > 0,\ \sigma \geq 0.
-         \end{align*}
+            \textbf{\textit{Posterior distribution}}
+            
+            \begin{align*}
+               \pi(\alpha,\, \rho,\, \sigma| \, \mathbf{x}) 
+               & \propto \mathcal{L}(\mathbf{m},\, \mathbf{K},\, \mathbf{x}| \, \alpha,\, \rho,\, \sigma) 
+               \cdot \pi(\alpha) 
+               \cdot \pi(\rho) 
+               \cdot \pi(\sigma)
+               \text{ for } \alpha \geq 0,\ \rho > 0,\ \sigma \geq 0,\\
+               & \propto \text{det}(\mathbf{K})^{-\frac{1}{2}} 
+               \text{exp} (-\frac{1}{2} (\mathbf{x} - \mathbf{m})^{\text{\text{T}}} \mathbf{K}^{-1} (\mathbf{x} - \mathbf{m}))
+               \cdot \text{exp}(-\frac{\alpha^2}{2\tau^2}) 
+               \cdot \rho^{-\lambda-1} \text{exp}(-\frac{\beta}{\rho}) 
+               \cdot \text{exp}(-\frac{\sigma^2}{2\phi^2}).
+            \end{align*}
+
+      \subsubsection*{Likelihood approach}
+      
+         \textbf{\textit{Likelihood function}}
+
+            \[\text{Since } X_{i} \sim \text{GP}(m(x_{i}) ,\, k(x_{i},\, x_{j})) \text{ then } \mathbf{x} \sim \mathcal{N}_{p}(\mathbf{m} ,\, \mathbf{K}).\]
+            \begin{align*}
+               \mathcal{L}(\mathbf{m} ,\, \mathbf{K} ,\, \mathbf{x}| \, \alpha ,\, \rho ,\, \sigma)
+               & = (2\pi)^{-\frac{p}{2}}\text{det}(\mathbf{K})^{-\frac{1}{2}} 
+               \text{exp} (-\frac{1}{2} (\mathbf{x} - \mathbf{m})^{\text{\text{T}}} \mathbf{K}^{-1} (\mathbf{x} - \mathbf{m})),
+               \text{ for } \mathbf{x} \in \mathbb{R}^{p},\\
+               & \propto \text{det}(\mathbf{K})^{-\frac{1}{2}} 
+               \text{exp} (-\frac{1}{2} (\mathbf{x} - \mathbf{m})^{\text{\text{T}}} \mathbf{K}^{-1} (\mathbf{x} - \mathbf{m})).
+            \end{align*}
+
+            \begin{align*}
+               (\hat{\alpha} ,\, \hat{\rho} ,\, \hat{\sigma}) = \arg\max_{\alpha ,\, \rho ,\, \sigma} \{\mathcal{L}(\mathbf{m} ,\, \mathbf{K} ,\, \mathbf{x}| \, \alpha ,\, \rho ,\, \sigma)\}.
+            \end{align*}
 
       \subsection*{Results}
 
@@ -466,6 +602,7 @@
 
    \section*{Bibliography}
       \begin{enumerate}
+         \item \label{Watson2025} {Watson (2025). Introduction to time series analysis.}
          \item \label{Betancourt2020} \href{https://betanalpha.github.io/assets/case_studies/gaussian_processes.html}{Betancourt (2020). Robust Gaussian process modeling.}
           \item \label{Roberts2013} \href{https://royalsocietypublishing.org/}{Roberts et al. (2013). Gaussian processes for time-series modelling. \textit{Philosophical Transactions of the Royal Society}.}
          \item \label{Rasmussen2006} \href{https://gaussianprocess.org/gpml/}{Rasmussen and Williams (2006). Gaussian Processes in Machine Learning. \textit{The MIT Press.}}
