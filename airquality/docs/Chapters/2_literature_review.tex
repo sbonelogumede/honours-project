@@ -32,7 +32,7 @@
 
       Most time series we encounter are non-stationary and we often need to transform them so that they exhibit stationarity. These transformations enable us to consider what other information exists in the data after we have removed the effect of a trend or seasonality and/or changing variance.
 
-      \subsubsection*{2.1.1 Time series plot}
+      \vspace{1em}
 
       The first step in time series analysis is to plot the data and observe any patterns that have occurred over time using a line graph. The time series plot enables us to detect and describe components of past behavior of the series. The identified components help in finding a suitable statistical model to decribe the data, which enables us to forecast future values of the time series.
 
@@ -46,21 +46,21 @@
          \item Random variation
       \end{itemize}
 
-      \vspace{1em}
+      \subsubsection{Trend}
 
-      \textbf{\textit{Trend}}: The long-term tendency of a time series. The pattern observed may move steadily in an upward or downward direction, or stay the same over time.
+         The long-term tendency of a time series. The pattern observed may move steadily in an upward or downward direction, or stay the same over time.
 
-      \vspace{1em}
+      \subsubsection{Cyclical variation}
 
-      \textbf{\textit{Cyclical variation}}: Irregular long-term wavelike movements through a time series. Due to extendend periods of prosperity followed by extended periods of recession.
+         Irregular long-term wavelike movements through a time series. Due to extendend periods of prosperity followed by extended periods of recession.
 
-      \vspace{1em}
+      \subsubsection{Seasonal variation}
 
-      \textbf{\textit{Seasonal variation}}: Regular short-term repetitive wavelike movements through a time series, often when data is recorded houly, daily, weekly, monthly or quarterly. It repeats itself through the time series.
+         Regular short-term repetitive wavelike movements through a time series, often when data is recorded houly, daily, weekly, monthly or quarterly. It repeats itself through the time series.
 
-      \vspace{1em}
+      \subsubsection{Random variation}
 
-      \textbf{\textit{Random variation}}: Random variations in the data due to the combined effects of all unforeseen events such as war, strikes, natural disasters, power cuts, etc. 
+         Random variations in the data due to the combined effects of all unforeseen events such as war, strikes, natural disasters, power cuts, etc. 
 
       \vspace{1em}
 
@@ -92,27 +92,54 @@
          \item The drift method
       \end{itemize}
 
+      \subsubsection{Average method}
+
+         The forecasts of all future values is the mean of the historical data: \[\hat{y}_{T+h|T} = \frac{\sum_{t=1}^{T} y_{t}}{T}.\]
+         The notation \(\hat{y}_{T+h|T}\) is a short-hand for the estimate of \(y_{T+h|T}\) based on the data \(\{y_{1},\, \ldots,\, y_{T}\}\).
+
+      \subsubsection{Naive method}
+
+         The forecasts of all future values is the last observation: \[\hat{y}_{T+h|T} = y_{T}.\]
+
+      \subsubsection{Seasonal naive method}
+
+         This is similar to the naive method, used when we have a time series with a strong seasonal component. The forecasted value for a particular `season' is simply the value corresponding to the previous `season': \[\hat{y}_{T+h|T} = y_{T+h-m(k+1)},\]
+         Where \(m\) is the seasonal period and \(k\) is the integer part of \((h-1)/m\) i.e. the number of complete seasonal variations that have passed since the end of the original time series data.
+         For example, if our time series is montly data and a seasonal variation lasts 12 months, then the future forecasts for all April values is simply the previous April value. If our time series is quartely data and a season lasts 4 quarters, then the future forecasts for all quarter 3 values is the previous quarter 3 value etc.
+
+      \subsubsection{Drift method}
+
+         An extension of the naive method to allow for the presence of a linear trend in the data. The amount of change over time (called the `drift') is equal to the average change in the historical data: \[\hat{y}_{T+h|T} = y_{T} + h \Big(\frac{y_{T} - y_{1}}{T-1} \Big).\]
+
+   \subsection{ARIMA models}
+
+      ARIMA models are very useful for modelling a wide variety of stationary and non-stationary time series process. ARIMA stands for `Auto Regressive Integrated Moving Average' and refers to models that are mixtures of autoregressive and moving average models.
+
+      \subsubsection{Autoregressive models}
+
+         The observed value at time \(t\) depends linearly on the last \(p\) observed values, and the model looks like a regression model. It is denoted AR(\(p\)).
+
+         \vspace{1em}
+
+         A process \(\{X_{t}\}\) is said to be an autoregressive process of order \(p\) if \[X_{t} = c + \phi_{1}X_{t-1} + \phi_{2}X_{t-2} + \ldots + \phi_{p}X_{t-p} + \epsilon_{t},\]
+
+         where \(\epsilon_{t}\) is a white noise process with mean 0 and variance \(\sigma^2\) that represents the error of the series, and \(c\) is a constant related to the mean of the process.
+
+      \subsubsection{Moving Average models}
+
+         Rather than using past values of the forecast variable in a regression, a moving average model uses past forecast errors in a regression-like model. It is denoted MA(\(q\)).
+
+         \vspace{1em}
+
+         A process \(\{X_{t}\}\) is said to be a moving average process of order \(q\) if \[X_{t} = c + \theta_{1} \epsilon_{t-1} +  \theta_{2} \epsilon_{t-2} + \ldots +  \theta_{q} \epsilon_{t-q},\]
+         
+         where \(\epsilon_{t}\) is a white noise process with mean 0 and variance \(\sigma^2\) that represents the error of the series, and \(c\) is a constant related to the mean of the process.
+      
       \vspace{1em}
 
-      \textbf{\textit{Average method}}: the forecasts of all future values is the mean of the historical data: \[\hat{y}_{T+h|T} = \frac{\sum_{t=1}^{T} y_{t}}{T}.\]
+      If a non-stationary time series is modelled by both an AR(\(p\)) and an MA(\(q\)) process, we say that it is modelled by an ARIMA(\(p\), \(d\), \(q\)) process. It takes the form \[X_{t} = c + \phi_{1}X_{t-1} + \phi_{2}X_{t-2} + \ldots + \phi_{p}X_{t-p} + \epsilon_{t} + \theta_{1} \epsilon_{t-1} +  \theta_{2} \epsilon_{t-2} + \ldots +  \theta_{q} \epsilon_{t-q},\]
 
-      The notation \(\hat{y}_{T+h|T}\) is a short-hand for the estimate of \(y_{T+h|T}\) based on the data \(\{y_{1},\, \ldots,\, y_{T}\}\).
-
-      \vspace{1em}
-
-      \textbf{\textit{Naive method}}: the forecasts of all future values is the last observation: \[\hat{y}_{T+h|T} = y_{T}.\]
-
-      \textbf{\textit{Seasonal naive method}}: this is similar to the naive method, used when we have a time series with a strong seasonal component. The forecasted value for a particular `season' is simply the value corresponding to the previous `season': \[\hat{y}_{T+h|T} = y_{T+h-m(k+1)},\]
-
-      Where \(m\) is the seasonal period and \(k\) is the integer part of \((h-1)/m\) i.e. the number of complete seasonal variations that have passed since the end of the original time series data.
-
-      \vspace{1em}
-
-      For example, if our time series is montly data and a seasonal variation lasts 12 months, then the future forecasts for all April values is simply the previous April value. If our time series is quartely data and a season lasts 4 quarters, then the future forecasts for all quarter 3 values is the previous quarter 3 value etc.
-
-      \vspace{1em}
-
-      \textbf{\textit{Drift method}}: An extension of the naive method to allow for the presence of a linear trend in the data. The amount of change over time (called the `drift') is equal to the average change in the historical data: \[\hat{y}_{T+h|T} = y_{T} + h \Big(\frac{y_{T} - y_{1}}{T-1} \Big).\]
+      where \(p\) is the number of autoregressive terms, \(d\) is the order of differencing and \(q\) is the number of moving average terms.
 
    \subsection{Gaussian Processes}
 
@@ -193,7 +220,19 @@
 
          \[k(x_{i}, \, x_{j}) = h^{2} \text{exp} \bigg(- \Big(\frac{x_i - x_j}{\lambda} \Big)^2 \bigg),\]
 
-         which results in functions that are only once differentiable, and corresponds to the Ornstein-Unlenbeck process.
+         which results in functions that are only once differentiable, and corresponds to the Ornstein-Unlenbeck process, the continuous time equivalent of a first-order autoregressive model, AR(1). Time series models corresponding to AR(\(p\)) processes are discrete time equivalents of GP models with Mat\'ern covariance functions with \(v = p - \frac{1}{2}\).
+
+         \vspace{1em}
+
+         \textit{Multiple inputs and outputs}. The simple distance metric, \(|x_{1} - x_{2}|\), used thus far clearly allows only for the simplest case of one-dimensional input \(x\), which we have hitherto tacitly assummed to represent a time measure. In general, however, we assume our input space has finite dimension and write \(x^{(e)}\) for the value of the \(e\)th element in \(\mathbf{x}\) and denote \(x_{i}^{(e)}\) as the value of the \(e\)th element at the \(i\)th index point. In such scenarios, we entertain multiple exogenous variables. Fortunately, it is not difficult to extend covariance functions to allow for these multiple input dimensions. Perhaps the simplest approach is to take a covariance function that is the product of one-dimensional covariances over each input (the \textit{product correlation} rule), \[k(x_{i}, \, x_{j}) = \prod_{e} k^{(e)} (x_{i}^{(e)}, \, x_{j}^{(e)}),\]
+         where \(k^{(e)}\) is a valid covariance function over the \(e\)th input. As the product of covariances is a covariance, so this defines a valid covariance over the multi-dimensional input space. We can also introduce distance functions appropriate for multiple inputs, such as the Mahalanobis distance, \[d^{(M)}(\mathbf{x}_{i}, \, \mathbf{x}_{j}, \, \boldsymbol{\Sigma}) = \sqrt{(\mathbf{x}_{i} - \mathbf{x}_{j})^{\text{T}} \boldsymbol{\Sigma}^{-1} (\mathbf{x}_{i} - \mathbf{x}_{j})},\]
+         where \(\boldsymbol{\Sigma}\) is a covariance matrix over the input variable vector \(\mathbf{x}\). Note that this is a matrix which represents hyperparameters of the model, and should not be confused with covariances formed from the covariance functions.
+
+         For multi-dimensional outputs, we consider a multi-dimensional space consisting of a set of time series along with a label \(l\), which indexes the time series, and \(x\) denoting time. Together, these hence form the two-dimensional set of \([l, \, x]\). We will then exploit the fact that a product of covariance functions is a covariance function in its own right, and write, \[k([l_{m}, \, x_{i}], \, [l_{n}, \, x_{j}]) = k_{x} (x_{i}, \, x_{j}) k_{l} (l_{m}, \, l_{n}),\] taking covariance function terms over both time and time-series label.
+
+         \vspace{1em}
+
+         \textit{Periodic and quasi-periodic kernels}. Note that a valid covariance function under any arbitrary (smooth) map remains a valid covariance function []. For any function \(u: x \to u(x)\), a covariance function \(k()\) defined over the range of \(x\) gives rise to a valid covariance \(k'(x)\) over the domain of \(u\). Hence, we can use simple, stationary covariances in order to construct more complex (possibly non-stationary) covariances. 
 
       \subsubsection{Prediction}
 
@@ -258,7 +297,7 @@
 
          \vspace{1em}
          
-         Mmore compactly
+         More compactly
 
          \vspace{1em}
 
