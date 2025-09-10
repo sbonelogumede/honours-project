@@ -4,14 +4,14 @@ require(package = "fpp3")
 require(package = "zoo")
 
 # Load the data.
-load(file = "../object/extracted_data_storage.RData")
+load(file = "../objects/extracted_data_storage.RData")
 extracted_data <- (extracted_data[[2]])[745:2160, ]
 extracted_data[, 2:5] <- na.approx(extracted_data[, 2:5], na.rm = FALSE)
 extracted_data[, 2:5] <- na.locf(extracted_data[, 2:5], na.rm = FALSE)
 extracted_data[, 2:5] <- na.locf(extracted_data[, 2:5], fromLast = TRUE)
 
 # Time series plot.
-png(filename="../img/TRAIN.png", width=6.5, height=4, res=300, units="in")
+png(filename="../images/TRAIN.png", width=6.5, height=4, res=300, units="in")
 plot(x = extracted_data$DateTime[1:672], 
 	  y = extracted_data$NO2[1:672], 
 	  main = "", 
@@ -22,7 +22,7 @@ plot(x = extracted_data$DateTime[1:672],
 	  lwd = 2)
 dev.off()
 
-png(filename="../img/LOG_TRAIN.png", width=6.5, height=4, res=300, units="in")
+png(filename="../images/LOG_TRAIN.png", width=6.5, height=4, res=300, units="in")
 plot(x = extracted_data$DateTime[1:672], 
 	  y = log(extracted_data$NO2)[1:672], 
 	  main = "", 

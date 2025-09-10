@@ -1,0 +1,83 @@
+\section{Methodology}
+   \subsection{Bayesian Approach}
+
+      Consider the sum of the squared exponential and the white noise kernels
+      \[k(x_{i}, \, x_{j}) = \alpha^{2} \text{exp} \bigg(- \Big(\frac{x_i - x_j}{\rho} \Big)^2 \bigg) + 
+      \sigma^2\delta_{ij}, \, \text{where} \, \delta_{ij} = 1 \, \text{for} \, i = j \, \text{and} \, \delta_{ij} = 0 \, \text{for} \, i \neq j.\]
+
+      Since
+      \[f(x_{i}) \sim \text{GP}(m(x_{i}) ,\, k(x_{i},\, x_{j})).\]
+
+      Then
+      \[\mathbf{x} =
+      \begin{bmatrix}
+         X_{1} \\
+         \vdots \\
+         X_{n}
+      \end{bmatrix}
+      \:
+      \sim \mathcal{N}_{n}(\mathbf{m}, \, \mathbf{K}).\]
+
+      Thus, the likelihood function is as follows
+      \begin{align*}
+         \mathcal{L}(\mathbf{m} ,\, \mathbf{K} ,\, \mathbf{x}| \, \alpha ,\, \rho ,\, \sigma)
+         & = (2\pi)^{-\frac{n}{2}}\text{det} (\mathbf{K})^{-\frac{1}{2}} 
+         \text{exp} \Big(-\frac{1}{2} (\mathbf{x} - \mathbf{m})^{\text{\text{T}}} \mathbf{K}^{-1} (\mathbf{x} - \mathbf{m}) \Big),
+         \text{ for } \mathbf{x} \in \mathbb{R}^{n},\\
+         & \propto \text{det}(\mathbf{K})^{-\frac{1}{2}} 
+         \text{exp} \Big(-\frac{1}{2} (\mathbf{x} - \mathbf{m})^{\text{\text{T}}} \mathbf{K}^{-1} (\mathbf{x} - \mathbf{m}) \Big).
+      \end{align*}
+
+      The prior distributions are as follows
+      \[\alpha \sim \text{half-normal} (0, \, \tau^2).\]
+      \begin{align*}
+         \pi(\alpha) 
+         & = \frac{2}{\sqrt{2\pi\tau^2}} \text{exp} \Big(-\frac{\alpha^2}{2\tau^2} \Big), \text{ for } \alpha \geq 0,\\
+         & \propto \text{exp} \Big(-\frac{\alpha^2}{2\tau^2} \Big).
+      \end{align*}
+
+      \[\rho \sim \text{Inverse-Gamma}(\lambda, \, \beta).\]
+      \begin{align*}
+         \pi(\rho)
+         & = \frac{\beta^{\lambda}}{\Gamma(\lambda)} \rho^{-\lambda-1} \text{exp} \Big(-\frac{\beta}{\rho} \Big), \text{ for } \rho > 0,\\
+         & \propto \rho^{-\lambda-1} \text{exp} \Big(-\frac{\beta}{\rho} \Big).
+      \end{align*}
+
+      \[\sigma \sim \text{half-normal} (0, \, \phi^2).\]
+      \begin{align*}
+         \pi(\sigma)
+         & = \frac{2}{\sqrt{2\pi\phi^2}} \text{exp} \Big(-\frac{\sigma^2}{2\phi^2} \Big), \text{ for } \sigma \geq 0,\\
+         & \propto \text{exp} \Big(-\frac{\sigma^2}{2\phi^2} \Big).
+      \end{align*}
+
+      Therefore, the posterior distribution is
+      \begin{align*}
+         \pi(\alpha,\, \rho,\, \sigma| \, \mathbf{x}) 
+         & \propto \mathcal{L}(\mathbf{m},\, \mathbf{K},\, \mathbf{x}| \, \alpha,\, \rho,\, \sigma) 
+         \cdot \pi(\alpha) 
+         \cdot \pi(\rho) 
+         \cdot \pi(\sigma)
+         \text{ for } \alpha \geq 0,\ \rho > 0,\ \sigma \geq 0,\\
+         & \propto \text{det}(\mathbf{K})^{-\frac{1}{2}} 
+         \text{exp} \Big(-\frac{1}{2} (\mathbf{x} - \mathbf{m})^{\text{\text{T}}} \mathbf{K}^{-1} (\mathbf{x} - \mathbf{m}) \Big)
+         \cdot \text{exp} \Big(-\frac{\alpha^2}{2\tau^2} \Big) 
+         \cdot \rho^{-\lambda-1} \text{exp} \Big(-\frac{\beta}{\rho} \Big) 
+         \cdot \text{exp} \Big(-\frac{\sigma^2}{2\phi^2} \Big).
+      \end{align*}
+
+   \subsection{Likelihood approach}
+
+      The likelihood function is as follows
+      \[\text{Since } f(x_{i}) \sim \text{GP}(m(x_{i}) ,\, k(x_{i},\, x_{j})) \text{ then } \mathbf{x} \sim \mathcal{N}_{n}(\mathbf{m} ,\, \mathbf{K}).\]
+      \begin{align*}
+         \mathcal{L}(\mathbf{m} ,\, \mathbf{K} ,\, \mathbf{x}| \, \alpha ,\, \rho ,\, \sigma)
+         & = (2\pi)^{-\frac{n}{2}}\text{det}(\mathbf{K})^{-\frac{1}{2}} 
+         \text{exp} (-\frac{1}{2} (\mathbf{x} - \mathbf{m})^{\text{\text{T}}} \mathbf{K}^{-1} (\mathbf{x} - \mathbf{m})),
+         \text{ for } \mathbf{x} \in \mathbb{R}^{n},\\
+         & \propto \text{det}(\mathbf{K})^{-\frac{1}{2}} 
+         \text{exp} (-\frac{1}{2} (\mathbf{x} - \mathbf{m})^{\text{\text{T}}} \mathbf{K}^{-1} (\mathbf{x} - \mathbf{m})).
+      \end{align*}
+
+      \begin{align*}
+         (\hat{\alpha} ,\, \hat{\rho} ,\, \hat{\sigma}) = \arg\max_{\alpha ,\, \rho ,\, \sigma} \{\mathcal{L}(\mathbf{m} ,\, \mathbf{K} ,\, \mathbf{x}| \, \alpha ,\, \rho ,\, \sigma)\}.
+      \end{align*}

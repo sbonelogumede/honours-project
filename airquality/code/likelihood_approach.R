@@ -4,7 +4,7 @@ h_vec <- c(24, 168, 744)
 res_mat <- matrix(nrow = 3, ncol = 3, dimnames = list(h_vec, c("alpha", "rho", "sigma")))
 
 for(i in 1:3){
-	load(file = paste0("../object/", h_vec[i], "h_parameters.RData"))
+	load(file = paste0("../objects/", h_vec[i], "h_parameters.RData"))
 	x_vec <- y1
 	n <- n1
 	dist_mat <- dist(x = x_vec, diag = TRUE, upper = TRUE) |> as.matrix()

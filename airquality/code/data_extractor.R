@@ -56,4 +56,4 @@ for(i in 1:3){
 	outer_temp <- NA
 }
 
-save(extracted_data, file = "../object/extracted_data_storage.RData")
+save(extracted_data, file = "../objects/extracted_data_storage.RData")

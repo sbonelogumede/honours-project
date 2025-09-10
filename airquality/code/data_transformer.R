@@ -1,4 +1,4 @@
-load(file = "../object/extracted_data_storage.RData")
+load(file = "../objects/extracted_data_storage.RData")
 
 transformed_data <- list()
 n <- length(x = extracted_data)
@@ -11,7 +11,7 @@ for(i in 1:n){
 	for(j in 2:m){
 		column <- dataset[[j]] # Get the column.
 		
-		column[column==0] <- rgamma(n=1, shape=2) # Add Gaussian noise.
+		column[column == 0] <- rgamma(n = 1, shape = 2) # Add Gaussian noise.
 		
 		column_log <- sapply(X = column, FUN = function(entry){
 			# Log transform the column.
@@ -34,4 +34,4 @@ for(i in 1:n){
 	outer_temp <- NA
 }
 
-save(transformed_data, file="../object/transformed_data_storage.RData")
+save(transformed_data, file = "../objects/transformed_data_storage.RData")
