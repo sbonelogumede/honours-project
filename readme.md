@@ -20,7 +20,7 @@ Professor Birgit Erni
 
 ## Abstract
 
-There are many ways to model the autocorrelation structure in time series (or longitudinal) data. Capturing the correlation structure through a Gaussian Process is a non-parametric approach which is very flexible and a good approach for capturing uncertainties. For this project you will learn to use Gaussian processes for modelling time series data, to simulate from Gaussian processes, reproduce existing model fits to data, and then model a local data set using Gaussian processes.
+There are many ways to model the autocorrelation structure in time series data. Capturing the correlation structure through a Gaussian Process is a non-parametric approach which is very flexible and a good approach for capturing uncertainties. For this project we use Gaussian processes for modelling time series data, simulate from Gaussian processes, reproduce existing model fits to data, and then model a local data set using Gaussian processes.
 
 ## Datasets
 

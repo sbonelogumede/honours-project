@@ -9,7 +9,7 @@ for(i in 1:3){
 	parameters <- list(n1 = n1, p = p, X1 = X1, y1 = log(y1), n2 = n2, X2 = X2)
 	coresNumber <- detectCores() - 2
 	
-	stan_fit <- stan(file = "GP_MLR_WN.stan", 
+	stan_fit <- stan(file = "GP_MLR_SE.stan", 
 						  cores = coresNumber,
 						  data = parameters, 
 						  verbose = FALSE)
@@ -24,4 +24,4 @@ for(i in 1:3){
 }
 
 print(x = R)
-write.table(R, file = "GP_MLR_WN_R.txt", sep = "\t", quote = FALSE, col.names = NA)
+write.table(R, file = "GP_MLR_SE_R.txt", sep = "\t", quote = FALSE, col.names = NA)

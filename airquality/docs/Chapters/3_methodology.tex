@@ -1,83 +1,199 @@
 \section{Methodology}
-   \subsection{Bayesian approach}
 
-      Consider the sum of the squared exponential and the white noise kernels
-      \[k(x_{i}, \, x_{j}) = \alpha^{2} \text{exp} \bigg(- \Big(\frac{x_i - x_j}{\rho} \Big)^2 \bigg) + 
-      \sigma^2\delta_{ij}, \, \text{where} \, \delta_{ij} = 1 \, \text{for} \, i = j \, \text{and} \, \delta_{ij} = 0 \, \text{for} \, i \neq j.\]
+   The three approaches that we consider are:
+   \begin{itemize}
+      \item Likelihood approach
+      \item Bayesian approach
+      \item Latent variable approach
+   \end{itemize}
 
-      Since
-      \[f(x_{i}) \sim \text{GP}(m(x_{i}) ,\, k(x_{i},\, x_{j})).\]
+   Note that for all of these approaches we use the same likelihood function.
 
-      Then
-      \[\mathbf{x} =
-      \begin{bmatrix}
-         X_{1} \\
-         \vdots \\
-         X_{n}
-      \end{bmatrix}
-      \:
-      \sim \mathcal{N}_{n}(\mathbf{m}, \, \mathbf{K}).\]
+   Since
+   \[f(x_{i}) \sim \text{GP}(m(x_{i}) ,\, k(x_{i},\, x_{j})).\]
 
-      Thus, the likelihood function is as follows
-      \begin{align*}
-         \mathcal{L}(\mathbf{m} ,\, \mathbf{K} ,\, \mathbf{x}| \, \alpha ,\, \rho ,\, \sigma)
-         & = (2\pi)^{-\frac{n}{2}}\text{det} (\mathbf{K})^{-\frac{1}{2}} 
-         \text{exp} \Big(-\frac{1}{2} (\mathbf{x} - \mathbf{m})^{\text{\text{T}}} \mathbf{K}^{-1} (\mathbf{x} - \mathbf{m}) \Big),
-         \text{ for } \mathbf{x} \in \mathbb{R}^{n},\\
-         & \propto \text{det}(\mathbf{K})^{-\frac{1}{2}} 
-         \text{exp} \Big(-\frac{1}{2} (\mathbf{x} - \mathbf{m})^{\text{\text{T}}} \mathbf{K}^{-1} (\mathbf{x} - \mathbf{m}) \Big).
-      \end{align*}
+   Then
+   \[\mathbf{x} =
+   \begin{bmatrix}
+      X_{1}\\ \vdots\\ X_{n}
+   \end{bmatrix}
+   \:
+   \sim \mathcal{N}_{n}(\mathbf{m}, \, \mathbf{K}).\]
 
-      The prior distributions are as follows
-      \[\alpha \sim \text{half-normal} (0, \, \tau^2).\]
-      \begin{align*}
-         \pi(\alpha) 
-         & = \frac{2}{\sqrt{2\pi\tau^2}} \text{exp} \Big(-\frac{\alpha^2}{2\tau^2} \Big), \text{ for } \alpha \geq 0,\\
-         & \propto \text{exp} \Big(-\frac{\alpha^2}{2\tau^2} \Big).
-      \end{align*}
-
-      \[\rho \sim \text{Inverse-Gamma}(\lambda, \, \beta).\]
-      \begin{align*}
-         \pi(\rho)
-         & = \frac{\beta^{\lambda}}{\Gamma(\lambda)} \rho^{-\lambda-1} \text{exp} \Big(-\frac{\beta}{\rho} \Big), \text{ for } \rho > 0,\\
-         & \propto \rho^{-\lambda-1} \text{exp} \Big(-\frac{\beta}{\rho} \Big).
-      \end{align*}
-
-      \[\sigma \sim \text{half-normal} (0, \, \phi^2).\]
-      \begin{align*}
-         \pi(\sigma)
-         & = \frac{2}{\sqrt{2\pi\phi^2}} \text{exp} \Big(-\frac{\sigma^2}{2\phi^2} \Big), \text{ for } \sigma \geq 0,\\
-         & \propto \text{exp} \Big(-\frac{\sigma^2}{2\phi^2} \Big).
-      \end{align*}
-
-      Therefore, the posterior distribution is
-      \begin{align*}
-         \pi(\alpha,\, \rho,\, \sigma| \, \mathbf{x}) 
-         & \propto \mathcal{L}(\mathbf{m},\, \mathbf{K},\, \mathbf{x}| \, \alpha,\, \rho,\, \sigma) 
-         \cdot \pi(\alpha) 
-         \cdot \pi(\rho) 
-         \cdot \pi(\sigma)
-         \text{ for } \alpha \geq 0,\ \rho > 0,\ \sigma \geq 0,\\
-         & \propto \text{det}(\mathbf{K})^{-\frac{1}{2}} 
-         \text{exp} \Big(-\frac{1}{2} (\mathbf{x} - \mathbf{m})^{\text{\text{T}}} \mathbf{K}^{-1} (\mathbf{x} - \mathbf{m}) \Big)
-         \cdot \text{exp} \Big(-\frac{\alpha^2}{2\tau^2} \Big) 
-         \cdot \rho^{-\lambda-1} \text{exp} \Big(-\frac{\beta}{\rho} \Big) 
-         \cdot \text{exp} \Big(-\frac{\sigma^2}{2\phi^2} \Big).
-      \end{align*}
-
+   Therefore, the likelihood function is:
+   \begin{align*}
+      \mathcal{L}(\mathbf{m} ,\, \mathbf{K} ,\, \mathbf{x}| \, \alpha ,\, \rho ,\, \sigma)
+      & = (2\pi)^{-\frac{n}{2}}\text{det} (\mathbf{K})^{-\frac{1}{2}} 
+      \text{exp} \Big(-\frac{1}{2} (\mathbf{x} - \mathbf{m})^{\text{\text{T}}} \mathbf{K}^{-1} (\mathbf{x} - \mathbf{m}) \Big),
+      \text{ for } \mathbf{x} \in \mathbb{R}^{n},\\
+      & \propto \text{det}(\mathbf{K})^{-\frac{1}{2}} 
+      \text{exp} \Big(-\frac{1}{2} (\mathbf{x} - \mathbf{m})^{\text{\text{T}}} \mathbf{K}^{-1} (\mathbf{x} - \mathbf{m}) \Big).
+   \end{align*}
+   
    \subsection{Likelihood approach}
 
-      The likelihood function is as follows
-      \[\text{Since } f(x_{i}) \sim \text{GP}(m(x_{i}) ,\, k(x_{i},\, x_{j})) \text{ then } \mathbf{x} \sim \mathcal{N}_{n}(\mathbf{m} ,\, \mathbf{K}).\]
-      \begin{align*}
-         \mathcal{L}(\mathbf{m} ,\, \mathbf{K} ,\, \mathbf{x}| \, \alpha ,\, \rho ,\, \sigma)
-         & = (2\pi)^{-\frac{n}{2}}\text{det}(\mathbf{K})^{-\frac{1}{2}} 
-         \text{exp} (-\frac{1}{2} (\mathbf{x} - \mathbf{m})^{\text{\text{T}}} \mathbf{K}^{-1} (\mathbf{x} - \mathbf{m})),
-         \text{ for } \mathbf{x} \in \mathbb{R}^{n},\\
-         & \propto \text{det}(\mathbf{K})^{-\frac{1}{2}} 
-         \text{exp} (-\frac{1}{2} (\mathbf{x} - \mathbf{m})^{\text{\text{T}}} \mathbf{K}^{-1} (\mathbf{x} - \mathbf{m})).
-      \end{align*}
+      \subsubsection{Zero mean function and white noise kernel}
 
-      \begin{align*}
-         (\hat{\alpha} ,\, \hat{\rho} ,\, \hat{\sigma}) = \arg\max_{\alpha ,\, \rho ,\, \sigma} \{\mathcal{L}(\mathbf{m} ,\, \mathbf{K} ,\, \mathbf{x}| \, \alpha ,\, \rho ,\, \sigma)\}.
-      \end{align*}
+         Let \[f(x_{i}) = 0\]
+          \[k(x_{i},\, x_{j}) = \sigma^2\delta_{ij}, \, \text{where} \, \delta_{ij} = 1 \, \text{for} \, i = j \, \text{and} \, \delta_{ij} = 0 \, \text{for} \, i \neq j.\]
+         Then \[\mathbf{m} = \mathbf{0} \text{ and } \mathbf{K} = \sigma^2\mathbf{I}_{n}\]
+         Therefore
+         \begin{align*}
+            \begin{bmatrix} \hat{\sigma} \end{bmatrix}
+            & = \underset{\sigma}{\arg\max} \quad \mathcal{L}(\mathbf{m} ,\, \mathbf{K} ,\, \mathbf{x}| \, \sigma)\\
+            & = \underset{\sigma}{\arg\min} \quad -\text{ln}(\mathcal{L}(\mathbf{m} ,\, \mathbf{K} ,\, \mathbf{x}| \, \sigma))\\
+            & = \underset{\sigma}{\arg\min} \quad -\text{ln} \bigg(\text{det}(\sigma^2\mathbf{I}_{n})^{-\frac{1}{2}} 
+            \text{exp} \Big(-\frac{1}{2} (\mathbf{x} - \mathbf{m})^{\text{\text{T}}} (\sigma^2\mathbf{I}_{n})^{-1} (\mathbf{x} - \mathbf{m}) \Big) \bigg)\\
+            & = \underset{\sigma}{\arg\min} \quad -\text{ln} \bigg((\sigma^2)^{-\frac{n}{2}} 
+            \text{exp} \Big(-\frac{1}{2\sigma^2} \mathbf{x}^{\text{\text{T}}} \mathbf{x} \Big) \bigg)
+         \end{align*}
+         
+         One can use the `optim' funtion in `R' to obtain an estimate of \(\sigma\).
+
+      \subsubsection{Zero mean function and squared exponential kernel}
+
+         Let \[f(x_{i}) = 0\]
+            \[k(x_{i},\, x_{j}) = \alpha^{2} \text{exp} \bigg(- \Big(\frac{x_i - x_j}{\rho} \Big)^2 \bigg)\]
+         Then \[\mathbf{m} = \mathbf{0}\]
+         Therefore
+         \begin{align*}
+            \begin{bmatrix} \hat{\alpha} \\ \hat{\rho} \end{bmatrix}
+            & = \underset{\alpha ,\, \rho}{\arg\max} \quad \mathcal{L}(\mathbf{m} ,\, \mathbf{K} ,\, \mathbf{x}| \, \alpha ,\, \rho)\\
+            & = \underset{\alpha ,\, \rho}{\arg\min} \quad -\text{ln}(\mathcal{L}(\mathbf{m} ,\, \mathbf{K} ,\, \mathbf{x}| \, \alpha ,\, \rho))\\
+            & = \underset{\alpha ,\, \rho}{\arg\min} \quad -\text{ln} \bigg(\text{det}(\mathbf{K})^{-\frac{1}{2}} 
+            \text{exp} \Big(-\frac{1}{2} (\mathbf{x} - \mathbf{m})^{\text{\text{T}}} \mathbf{K}^{-1} (\mathbf{x} - \mathbf{m}) \Big) \bigg)\\
+            & = \underset{\alpha ,\, \rho}{\arg\min} \quad -\text{ln} \bigg(\text{det}(\mathbf{K})^{-\frac{1}{2}} 
+            \text{exp} \Big(-\frac{1}{2} \mathbf{x}^{\text{\text{T}}} \mathbf{K}^{-1} \mathbf{x} \Big) \bigg)
+         \end{align*}
+         
+         One can use the `optim' funtion in `R' to obtain estimates of \(\alpha\) and \(\rho\).
+      
+      \subsubsection{Multiple linear regression mean function and squared exponential kernel}
+
+         \[f(x_{i}) = \beta_{0} + \sum_{j=1}^{p} \beta_{j} x_{ij}.\]
+         \[k(x_{i},\, x_{j}) = \alpha^{2} \text{exp} \bigg(- \Big(\frac{x_i - x_j}{\rho} \Big)^2 \bigg).\]
+         Then \[\mathbf{m} = \mathbf{X}\boldsymbol{\beta}\]
+         Therefore
+         \begin{align*}
+            \begin{bmatrix} \hat{\boldsymbol{\beta}} \\ \hat{\alpha} \\ \hat{\rho} \end{bmatrix}
+            & = \underset{\boldsymbol{\beta} ,\, \alpha ,\, \rho}{\arg\max} \quad \mathcal{L}(\mathbf{m} ,\, \mathbf{K} ,\, \mathbf{x}| \, \boldsymbol{\beta} ,\, \alpha ,\, \rho)\\
+            & = \underset{\boldsymbol{\beta} ,\, \alpha ,\, \rho}{\arg\min} \quad -\text{ln}(\mathcal{L}(\mathbf{m} ,\, \mathbf{K} ,\, \mathbf{x}| \, \boldsymbol{\beta} ,\, \alpha ,\, \rho))\\
+            & = \underset{\boldsymbol{\beta} ,\, \alpha ,\, \rho}{\arg\min} \quad -\text{ln} \bigg(\text{det}(\mathbf{K})^{-\frac{1}{2}} 
+            \text{exp} \Big(-\frac{1}{2} (\mathbf{x} - \mathbf{X}\boldsymbol{\beta})^{\text{\text{T}}} \mathbf{K}^{-1} (\mathbf{x} - \mathbf{X}\boldsymbol{\beta}) \Big) \bigg)\\
+            & = \underset{\boldsymbol{\beta} ,\, \alpha ,\, \rho}{\arg\min} \quad -\text{ln} \bigg(\text{det}(\mathbf{K})^{-\frac{1}{2}} 
+            \text{exp} \Big(-\frac{1}{2} (\mathbf{x} - \mathbf{X}\boldsymbol{\beta})^{\text{\text{T}}} \mathbf{K}^{-1} (\mathbf{x} - \mathbf{X}\boldsymbol{\beta}) \Big) \bigg)
+         \end{align*}
+
+         One can use the `optim' funtion in `R' to obtain estimates of \(\boldsymbol{\beta}\), \(\alpha\) and \(\rho\).
+   
+   \subsection{Bayesian approach}
+
+      \subsubsection{Zero mean function and squared exponential kernel}
+
+         \[f(x_{i}) = 0.\]
+         \[k(x_{i},\, x_{j}) = \sigma^2\delta_{ij}, \, \text{where} \, \delta_{ij} = 1 \, \text{for} \, i = j \, \text{and} \, \delta_{ij} = 0 \, \text{for} \, i \neq j.\]
+         This is the simplest model we can fit. It has the implication that there is no trend in the data and observations are independent. These assumptions are not true for most time series.
+
+         \[\mathbf{m} = \mathbf{0} \text{ and } \mathbf{K} = \sigma^2 \mathbf{I}_{n}\]
+
+         The likelihood function becomes
+         \begin{align*}
+            \mathcal{L}(\mathbf{m} ,\, \mathbf{K} ,\, \mathbf{x}| \, \alpha ,\, \rho ,\, \sigma)
+            & \propto \text{det}(\mathbf{K})^{-\frac{1}{2}} 
+            \text{exp} \Big(-\frac{1}{2} (\mathbf{x} - \mathbf{m})^{\text{\text{T}}} \mathbf{K}^{-1} (\mathbf{x} - \mathbf{m}) \Big)\\
+            & \propto \text{det}(\sigma^2 \mathbf{I}_{n})^{-\frac{1}{2}} 
+            \text{exp} \Big(-\frac{1}{2} (\mathbf{x} - \mathbf{0})^{\text{\text{T}}} (\sigma^2 \mathbf{I}_{n})^{-1} (\mathbf{x} - \mathbf{0}) \Big)\\
+            & \propto (\sigma^2)^{-\frac{n}{2}} \text{exp} \Big(-\frac{1}{2\sigma^2} \mathbf{x}^{\text{\text{T}}}\mathbf{x} \Big)
+         \end{align*}
+
+         Prior for \(\sigma\) for a known \(\phi\)
+         \[\sigma \sim \text{half-normal} (0, \, \phi^2).\]
+         \begin{align*}
+            \pi(\sigma)
+            & = \frac{2}{\sqrt{2\pi\phi^2}} \text{exp} \Big(-\frac{\sigma^2}{2\phi^2} \Big), \text{ for } \sigma \geq 0,\\
+            & \propto \text{exp} \Big(-\frac{\sigma^2}{2\phi^2} \Big).
+         \end{align*}
+
+         Therefore, the posterior distribution is
+         \begin{align*}
+            \pi(\sigma| \, \mathbf{x}) 
+            & \propto \mathcal{L}(\mathbf{m},\, \mathbf{K},\, \mathbf{x}| \sigma) 
+            \cdot \pi(\sigma)
+            \text{ for } \sigma \geq 0,\\
+            & \propto (\sigma^2)^{-\frac{n}{2}} \text{exp} \Big(-\frac{1}{2\sigma^2} \mathbf{x}^{\text{\text{T}}}\mathbf{x} \Big)
+            \cdot \text{exp} \Big(-\frac{\sigma^2}{2\phi^2} \Big).
+         \end{align*}
+
+      \subsubsection{Zero mean function and squared exponential kernel}
+
+         \[f(x_{i}) = 0.\]
+         \[k(x_{i},\, x_{j}) = \alpha^{2} \text{exp} \bigg(- \Big(\frac{x_i - x_j}{\rho} \Big)^2 \bigg).\]
+         We could improve from the previous model by accounting for autocorrelation present in the data. We do this via the squared exponential kernel. It is a natural way of describing the autocorrelation decay.
+
+         Likelihood function
+         \begin{align*}
+         \mathcal{L}(\mathbf{m} ,\, \mathbf{K} ,\, \mathbf{x}| \, \alpha ,\, \rho)
+         & \propto \text{det}(\mathbf{K})^{-\frac{1}{2}} 
+         \text{exp} \Big(-\frac{1}{2} \mathbf{x}^{\text{\text{T}}} \mathbf{K}^{-1} \mathbf{x} \Big).
+         \end{align*}
+
+         Prior for \(\alpha\) for a known \(\tau\)
+         \[\alpha \sim \text{half-normal} (0, \, \tau^2).\]
+         \begin{align*}
+            \pi(\alpha) 
+            & = \frac{2}{\sqrt{2\pi\tau^2}} \text{exp} \Big(-\frac{\alpha^2}{2\tau^2} \Big), \text{ for } \alpha \geq 0,\\
+            & \propto \text{exp} \Big(-\frac{\alpha^2}{2\tau^2} \Big).
+         \end{align*}
+
+         Prior for \(\rho\) for a known \(\lambda\)
+         \[\rho \sim \text{Inverse-Gamma}(\lambda, \, \beta).\]
+         \begin{align*}
+            \pi(\rho)
+            & = \frac{\beta^{\lambda}}{\Gamma(\lambda)} \rho^{-\lambda-1} \text{exp} \Big(-\frac{\beta}{\rho} \Big), \text{ for } \rho > 0,\\
+            & \propto \rho^{-\lambda-1} \text{exp} \Big(-\frac{\beta}{\rho} \Big).
+         \end{align*}
+
+         Posterior density
+         \begin{align*}
+            \pi(\alpha,\, \rho| \, \mathbf{x}) 
+            & \propto \mathcal{L}(\mathbf{m},\, \mathbf{K},\, \mathbf{x}| \, \alpha,\, \rho) 
+            \cdot \pi(\alpha) 
+            \cdot \pi(\rho) 
+            \text{ for } \alpha \geq 0,\ \rho > 0\\
+            & \propto \text{det}(\mathbf{K})^{-\frac{1}{2}} 
+            \text{exp} \Big(-\frac{1}{2} \mathbf{x}^{\text{\text{T}}} \mathbf{K}^{-1} \mathbf{x} \Big)
+            \cdot \text{exp} \Big(-\frac{\alpha^2}{2\tau^2} \Big) 
+            \cdot \rho^{-\lambda-1} \text{exp} \Big(-\frac{\beta}{\rho} \Big).
+         \end{align*}
+
+      \subsubsection{Multiple linear regression mean function and squared exponential kernel}
+
+         \[f(x_{i}) = \beta_{0} + \sum_{j=1}^{p} \beta_{j} x_{ij}.\]
+         \[k(x_{i},\, x_{j}) = \alpha^{2} \text{exp} \bigg(- \Big(\frac{x_i - x_j}{\rho} \Big)^2 \bigg).\]
+         A futher improvement on the previous models that allows accounting for a linear-trend and autocorrelation in the data. This is a reasonable assumption to make for some time series data.
+         Then \[\mathbf{m} = \mathbf{X}\boldsymbol{\beta}\]
+
+         The prior distributions for the beta coefficients are as follows
+         \[\boldsymbol{\beta} \sim \mathcal{N}_{p}(\mathbf{0},\, \text{I}_{p}).\]
+         \begin{align*}
+            \pi(\boldsymbol{\beta}) 
+            & = (2\pi)^{-\frac{p}{2}} \text{exp} \Big( -\frac{1}{2} (\boldsymbol{\beta} - \mathbf{0})^{\text{T}} (\text{I}_{p})^{-1}(\boldsymbol{\beta} - \mathbf{0}) \Big), \text{ for } \boldsymbol{\beta} \in \mathbb{R}^{p},\\
+            & \propto \text{exp} \Big( -\frac{1}{2} \boldsymbol{\beta}^{\text{T}} \boldsymbol{\beta} \Big).
+         \end{align*}
+
+         Therefore, the posterior distribution is
+         \begin{align*}
+            \pi(\alpha,\, \rho| \, \mathbf{x}) 
+            & \propto \mathcal{L}(\mathbf{m},\, \mathbf{K},\, \mathbf{x}| \, \alpha,\, \rho) 
+            \cdot \phi(\beta)
+            \cdot \pi(\alpha) 
+            \cdot \pi(\rho) 
+            \text{ for } \alpha \geq 0,\ \rho > 0\\
+            & \propto \text{det}(\mathbf{K})^{-\frac{1}{2}} 
+            \text{exp} \Big(-\frac{1}{2} (\mathbf{x} - \mathbf{X}\boldsymbol{\beta})^{\text{\text{T}}} \mathbf{K}^{-1} (\mathbf{x} - \mathbf{X}\boldsymbol{\beta}) \Big)
+            \cdot \text{exp} \Big( -\frac{1}{2} \boldsymbol{\beta}^{\text{T}} \boldsymbol{\beta} \Big)
+            \cdot \text{exp} \Big(-\frac{\alpha^2}{2\tau^2} \Big) 
+            \cdot \rho^{-\lambda-1} \text{exp} \Big(-\frac{\beta}{\rho} \Big) 
+            \cdot \text{exp} \Big(-\frac{\sigma^2}{2\phi^2} \Big).
+         \end{align*}
+

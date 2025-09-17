@@ -182,6 +182,12 @@
          k(x_{n}, \, x_{1}) & k(x_{n}, \, x_{2}) & \cdots & k(x_{n}, \, x_{n})
       \end{bmatrix}\).
 
+      \subsubsection{Mean functions}
+
+         Usually in the literature people use a zero-mean function. \cite{Betancourt2020} This is because every Gaussian process can be recovered by adding the mean function to a corresponding zero-mean Gaussian process \[f \sim \text{GP}(0,\, k)\] \[m + f \sim \text{GP}(m,\, k),\] 
+         
+         In this paper we explore this and a multiple linear regression mean function \(m_{i} = \beta_0 + \sum_{j=1}^{p}x_{ij} \beta_{j}\).
+
       \subsubsection{Covariance functions}
 
          \cite{Roberts2013} In the following section, we briefly describe commonly used kernels. We start with a simple white noise, and then consider common \textit{stationary} covariances, both uni- and multi-dimensional. We finish this section with periodic and quasi-periodic kernel functions. We note that sums (and products) of valid covariance kernels give valid covariance functions (i.e. the resultant covariance matrices are positive semi-definite) and so we may entertain with ease multiple explanatory hypothesis. 
@@ -232,7 +238,11 @@
 
          \vspace{1em}
 
-         \textit{Periodic and quasi-periodic kernels}. Note that a valid covariance function under any arbitrary (smooth) map remains a valid covariance function []. For any function \(u: x \to u(x)\), a covariance function \(k()\) defined over the range of \(x\) gives rise to a valid covariance \(k'(x)\) over the domain of \(u\). Hence, we can use simple, stationary covariances in order to construct more complex (possibly non-stationary) covariances. 
+         \textit{Periodic and quasi-periodic kernels}. Note that a valid covariance function under any arbitrary (smooth) map remains a valid covariance function \cite{Roberts2013}. For any function \(u: x \to u(x)\), a covariance function \(k()\) defined over the range of \(x\) gives rise to a valid covariance \(k'(x)\) over the domain of \(u\). Hence, we can use simple, stationary covariances in order to construct more complex (possibly non-stationary) covariances. A particular relevent example of this, \[u(x) = (u^{(a)}(x),\, u^{(b)}(x)) = \bigg( \text{cos}\Big(2\pi\frac{x}{T} \Big),\, \text{sin}\Big(2\pi\frac{x}{T}\Big) \bigg),\] allows us to modify our simple covariance functions above to model periodic functions. We can now take this covariance over \(u\) as a valid covariance over \(x\). As a result, we have the covariance function, for example of the squared exponential, \[k(x_{i},\, x_{j};\, h,\, w,\, T) = h^2 \text{exp}\bigg( -\frac{1}{2w^2} \text{sin}^2\Big( \pi\Big|\frac{x_{i} - x_{j}}{T}\Big| \Big)\bigg).\]
+         
+         In this case, the output scale \(h\) serves as the amplitude and \(T\) is the period. The hyperparameter \(w\) is a `roughness' parameter that serves a role similar to the input scale \(\lambda\) in stationary covariances. With this formulation, we can peform inference about functions of arbitrary roughness and arbitrary period. Indeed a periodic covariance function can be constructed from any kernel involving the squared distance \((x_{i} - x_{j})^2\) by replacing the latter with \(\text{sin}^2[\pi(x_{i} - x_{j})/T]\), where \(T\) is the period. The length scale \(w\) is now relative to the period, and letting \(w \to \infty\) gives sinusoidal variations, while increasingly small values of \(w\) give periodic variations with increasingly complex harmonic content. Similar periodic functions could also be used, as long as they give rise to a symmetric positive definite covariance matrix - \(\text{sin}^2\) is merely the simplest.
+
+         As described in Rasmussen \& Williams \cite{Rasmussen2006}, valid covariance functions can be constructed by adding or multiplying simpler covariance functions. Thus, we can obtain a quasi-periodic kernel simply by multiplying a periodic kernel with one of the basic stationary kernels described earlier. The latter then specifies the rate of evolution of the periodic signal. For example, we can multiply the previous equation with a squared exponential kernel, \[k_{\text{QP, SE}}(x_{i},\, x_{j}) = h^2 \text{exp}\bigg( -\frac{\text{sin}^2[ \pi(x_{i} - x_{j})/{T}]}{2w^2} - \frac{(x_{i} - x_{j})^2}{\lambda^2} \bigg),\] to model a quasi-periodic signal with a single evolutionary time scale \(\lambda\).
 
       \subsubsection{Prediction}
 
