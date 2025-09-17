@@ -10,7 +10,7 @@
 
       \vspace{1em}
 
-      Time series data are extremely common. They arize in virtually every application field, such as business (sales figures, production numbers, and customer frequencies), economics (stock prices, exchange rates, and interest rates), and official statistics (census data, personal expenditures, and road casualities).
+      Time series data are extremely common. They arise in virtually every application field, such as business (sales figures, production numbers, and customer frequencies), economics (stock prices, exchange rates, and interest rates), and official statistics (census data, personal expenditures, and road casualties).
 
       \vspace{1em}
 
@@ -18,7 +18,7 @@
 
       \vspace{1em}
 
-      Standard inferential techniques which assume independence of observations (e.g. regression) do not work well when data is collected at regular equally spaced time intervals because the observations are likely to be dependent. When this dependence occurs between observations \(g\) time periods apart, it is called `autocorrelation' at lag \(g\). So we cannot assume that the data consitute a random sample.
+      Standard inferential techniques which assume independence of observations (e.g. regression) do not work well when data is collected at regular equally spaced time intervals because the observations are likely to be dependent. When this dependence occurs between observations \(g\) time periods apart, it is called `autocorrelation' at lag \(g\). So we cannot assume that the data constitute a random sample.
 
       \vspace{1em}
 
@@ -34,7 +34,7 @@
 
       \vspace{1em}
 
-      The first step in time series analysis is to plot the data and observe any patterns that have occurred over time using a line graph. The time series plot enables us to detect and describe components of past behavior of the series. The identified components help in finding a suitable statistical model to decribe the data, which enables us to forecast future values of the time series.
+      The first step in time series analysis is to plot the data and observe any patterns that have occurred over time using a line graph. The time series plot enables us to detect and describe components of past behavior of the series. The identified components help in finding a suitable statistical model to describe the data, which enables us to forecast future values of the time series.
 
       \vspace{1em}
 
@@ -52,11 +52,11 @@
 
       \subsubsection{Cyclical variation}
 
-         Irregular long-term wavelike movements through a time series. Due to extendend periods of prosperity followed by extended periods of recession.
+         Irregular long-term wavelike movements through a time series. Due to extended periods of prosperity followed by extended periods of recession.
 
       \subsubsection{Seasonal variation}
 
-         Regular short-term repetitive wavelike movements through a time series, often when data is recorded houly, daily, weekly, monthly or quarterly. It repeats itself through the time series.
+         Regular short-term repetitive wavelike movements through a time series, often when data is recorded hourly, daily, weekly, monthly or quarterly. It repeats itself through the time series.
 
       \subsubsection{Random variation}
 
@@ -80,7 +80,7 @@
 
       \vspace{1em}
       
-      We fit simple forecasting methods to use as `benchmarks' against which we compare other more complex forecasting methods i.e. if a more complicated forecasting method does not yield better forecasts than one of the simple methods here, there is no need to use it for the particular time series analysed.
+      We fit simple forecasting methods to use as `benchmarks' against which we compare other more complex forecasting methods i.e. if a more complicated forecasting method does not yield better forecasts than one of the simple methods here, there is no need to use it for the particular time series analyzed.
 
       \vspace{1em}
 
@@ -105,7 +105,7 @@
 
          This is similar to the naive method, used when we have a time series with a strong seasonal component. The forecasted value for a particular `season' is simply the value corresponding to the previous `season': \[\hat{y}_{T+h|T} = y_{T+h-m(k+1)},\]
          Where \(m\) is the seasonal period and \(k\) is the integer part of \((h-1)/m\) i.e. the number of complete seasonal variations that have passed since the end of the original time series data.
-         For example, if our time series is montly data and a seasonal variation lasts 12 months, then the future forecasts for all April values is simply the previous April value. If our time series is quartely data and a season lasts 4 quarters, then the future forecasts for all quarter 3 values is the previous quarter 3 value etc.
+         For example, if our time series is monthly data and a seasonal variation lasts 12 months, then the future forecasts for all April values is simply the previous April value. If our time series is quarterly data and a season lasts 4 quarters, then the future forecasts for all quarter 3 values is the previous quarter 3 value etc.
 
       \subsubsection{Drift method}
 
@@ -147,7 +147,7 @@
 
       \vspace{1em}
 
-      A Gaussian process is completely specified by its mean function and co-variance function. We define mean mean function \(m(x_{i})\) and the covariance function \(k(x_{i},\, x_{j})\) for a real process \(f(x_{i})\) as
+      A Gaussian process is completely specified by its mean function and co-variance function. We define the mean function \(m(x_{i})\) and the covariance function \(k(x_{i},\, x_{j})\) for a real process \(f(x_{i})\) as
       \[m(x_{i}) = \mathbb{E}[f(x_{i})],\]
       \[k(x_{i},\, x_{j}) = \mathbb{E}[(f(x_{i}) - m(x_{i}))(f(x_{j}) - m(x_{j}))],\]
       and will write the Gaussian process as
@@ -198,7 +198,7 @@
          
          \[k(x_{i}, \, x_{j}) = \sigma^2\delta_{ij}, \, \text{where} \, \delta_{ij} = 1 \, \text{for} \, i = j \, \text{and} \, \delta_{ij} = 0 \, \text{for} \, i \neq j.\]
 
-         This kernel allows us to entertain uncertainity in our observed data and is so typically found added to other kernels.
+         This kernel allows us to entertain uncertainty in our observed data and is so typically found added to other kernels.
 
          \vspace{1em}
 
@@ -222,7 +222,7 @@
 
          \[k(x_{i}, \, x_{j}) = h^{2} \frac{1}{\Gamma(v)2^{v-1}} \bigg(2\sqrt{v}\frac{|x_{i} - x_{j}|}{\lambda} \bigg) \mathbb{B}_{v} \bigg(2\sqrt{v}\frac{|x_{i} - x_{j}|}{\lambda} \bigg),\]
 
-         where \(h\) is the output scale, \(\lambda\) is the input scale, \(\Gamma()\) is the standard Gamma function and \(\mathbb{B}()\) is the modified Bessel function of second order. The additional hyperparameter \(v\) controls the degree of differentiability of the resultant functions modelled by a GP with a Mat\'ern covariance function, such that there are only \((v + \frac{1}{2})\) times differentiable. As \(v \to \infty\), so the functions become infinitely differentiable and the Matern kernel becomes the SE one. Taking \(v = \frac{1}{2}\) gives the exponential kernel
+         where \(h\) is the output scale, \(\lambda\) is the input scale, \(\Gamma()\) is the standard Gamma function and \(\mathbb{B}()\) is the modified Bessel function of second order. The additional hyperparameter \(v\) controls the degree of differentiability of the resultant functions modelled by a GP with a Mat\'ern covariance function, such that there are only \((v + \frac{1}{2})\) times differentiable. As \(v \to \infty\), so the functions become infinitely differentiable and the Mat\'ern kernel becomes the SE one. Taking \(v = \frac{1}{2}\) gives the exponential kernel
 
          \[k(x_{i}, \, x_{j}) = h^{2} \text{exp} \bigg(- \Big(\frac{x_i - x_j}{\lambda} \Big)^2 \bigg),\]
 
@@ -230,7 +230,7 @@
 
          \vspace{1em}
 
-         \textit{Multiple inputs and outputs}. The simple distance metric, \(|x_{1} - x_{2}|\), used thus far clearly allows only for the simplest case of one-dimensional input \(x\), which we have hitherto tacitly assummed to represent a time measure. In general, however, we assume our input space has finite dimension and write \(x^{(e)}\) for the value of the \(e\)th element in \(\mathbf{x}\) and denote \(x_{i}^{(e)}\) as the value of the \(e\)th element at the \(i\)th index point. In such scenarios, we entertain multiple exogenous variables. Fortunately, it is not difficult to extend covariance functions to allow for these multiple input dimensions. Perhaps the simplest approach is to take a covariance function that is the product of one-dimensional covariances over each input (the \textit{product correlation} rule), \[k(x_{i}, \, x_{j}) = \prod_{e} k^{(e)} (x_{i}^{(e)}, \, x_{j}^{(e)}),\]
+         \textit{Multiple inputs and outputs}. The simple distance metric, \(|x_{1} - x_{2}|\), used thus far clearly allows only for the simplest case of one-dimensional input \(x\), which we have hitherto tacitly assumed to represent a time measure. In general, however, we assume our input space has finite dimension and write \(x^{(e)}\) for the value of the \(e\)th element in \(\mathbf{x}\) and denote \(x_{i}^{(e)}\) as the value of the \(e\)th element at the \(i\)th index point. In such scenarios, we entertain multiple exogenous variables. Fortunately, it is not difficult to extend covariance functions to allow for these multiple input dimensions. Perhaps the simplest approach is to take a covariance function that is the product of one-dimensional covariances over each input (the \textit{product correlation} rule), \[k(x_{i}, \, x_{j}) = \prod_{e} k^{(e)} (x_{i}^{(e)}, \, x_{j}^{(e)}),\]
          where \(k^{(e)}\) is a valid covariance function over the \(e\)th input. As the product of covariances is a covariance, so this defines a valid covariance over the multi-dimensional input space. We can also introduce distance functions appropriate for multiple inputs, such as the Mahalanobis distance, \[d^{(M)}(\mathbf{x}_{i}, \, \mathbf{x}_{j}, \, \boldsymbol{\Sigma}) = \sqrt{(\mathbf{x}_{i} - \mathbf{x}_{j})^{\text{T}} \boldsymbol{\Sigma}^{-1} (\mathbf{x}_{i} - \mathbf{x}_{j})},\]
          where \(\boldsymbol{\Sigma}\) is a covariance matrix over the input variable vector \(\mathbf{x}\). Note that this is a matrix which represents hyperparameters of the model, and should not be confused with covariances formed from the covariance functions.
 
@@ -238,9 +238,9 @@
 
          \vspace{1em}
 
-         \textit{Periodic and quasi-periodic kernels}. Note that a valid covariance function under any arbitrary (smooth) map remains a valid covariance function \cite{Roberts2013}. For any function \(u: x \to u(x)\), a covariance function \(k()\) defined over the range of \(x\) gives rise to a valid covariance \(k'(x)\) over the domain of \(u\). Hence, we can use simple, stationary covariances in order to construct more complex (possibly non-stationary) covariances. A particular relevent example of this, \[u(x) = (u^{(a)}(x),\, u^{(b)}(x)) = \bigg( \text{cos}\Big(2\pi\frac{x}{T} \Big),\, \text{sin}\Big(2\pi\frac{x}{T}\Big) \bigg),\] allows us to modify our simple covariance functions above to model periodic functions. We can now take this covariance over \(u\) as a valid covariance over \(x\). As a result, we have the covariance function, for example of the squared exponential, \[k(x_{i},\, x_{j};\, h,\, w,\, T) = h^2 \text{exp}\bigg( -\frac{1}{2w^2} \text{sin}^2\Big( \pi\Big|\frac{x_{i} - x_{j}}{T}\Big| \Big)\bigg).\]
+         \textit{Periodic and quasi-periodic kernels}. Note that a valid covariance function under any arbitrary (smooth) map remains a valid covariance function \cite{Roberts2013}. For any function \(u: x \to u(x)\), a covariance function \(k()\) defined over the range of \(x\) gives rise to a valid covariance \(k'(x)\) over the domain of \(u\). Hence, we can use simple, stationary covariances in order to construct more complex (possibly non-stationary) covariances. A particular relevant example of this, \[u(x) = (u^{(a)}(x),\, u^{(b)}(x)) = \bigg( \text{cos}\Big(2\pi\frac{x}{T} \Big),\, \text{sin}\Big(2\pi\frac{x}{T}\Big) \bigg),\] allows us to modify our simple covariance functions above to model periodic functions. We can now take this covariance over \(u\) as a valid covariance over \(x\). As a result, we have the covariance function, for example of the squared exponential, \[k(x_{i},\, x_{j};\, h,\, w,\, T) = h^2 \text{exp}\bigg( -\frac{1}{2w^2} \text{sin}^2\Big( \pi\Big|\frac{x_{i} - x_{j}}{T}\Big| \Big)\bigg).\]
          
-         In this case, the output scale \(h\) serves as the amplitude and \(T\) is the period. The hyperparameter \(w\) is a `roughness' parameter that serves a role similar to the input scale \(\lambda\) in stationary covariances. With this formulation, we can peform inference about functions of arbitrary roughness and arbitrary period. Indeed a periodic covariance function can be constructed from any kernel involving the squared distance \((x_{i} - x_{j})^2\) by replacing the latter with \(\text{sin}^2[\pi(x_{i} - x_{j})/T]\), where \(T\) is the period. The length scale \(w\) is now relative to the period, and letting \(w \to \infty\) gives sinusoidal variations, while increasingly small values of \(w\) give periodic variations with increasingly complex harmonic content. Similar periodic functions could also be used, as long as they give rise to a symmetric positive definite covariance matrix - \(\text{sin}^2\) is merely the simplest.
+         In this case, the output scale \(h\) serves as the amplitude and \(T\) is the period. The hyperparameter \(w\) is a `roughness' parameter that serves a role similar to the input scale \(\lambda\) in stationary covariances. With this formulation, we can perform inference about functions of arbitrary roughness and arbitrary period. Indeed a periodic covariance function can be constructed from any kernel involving the squared distance \((x_{i} - x_{j})^2\) by replacing the latter with \(\text{sin}^2[\pi(x_{i} - x_{j})/T]\), where \(T\) is the period. The length scale \(w\) is now relative to the period, and letting \(w \to \infty\) gives sinusoidal variations, while increasingly small values of \(w\) give periodic variations with increasingly complex harmonic content. Similar periodic functions could also be used, as long as they give rise to a symmetric positive definite covariance matrix - \(\text{sin}^2\) is merely the simplest.
 
          As described in Rasmussen \& Williams \cite{Rasmussen2006}, valid covariance functions can be constructed by adding or multiplying simpler covariance functions. Thus, we can obtain a quasi-periodic kernel simply by multiplying a periodic kernel with one of the basic stationary kernels described earlier. The latter then specifies the rate of evolution of the periodic signal. For example, we can multiply the previous equation with a squared exponential kernel, \[k_{\text{QP, SE}}(x_{i},\, x_{j}) = h^2 \text{exp}\bigg( -\frac{\text{sin}^2[ \pi(x_{i} - x_{j})/{T}]}{2w^2} - \frac{(x_{i} - x_{j})^2}{\lambda^2} \bigg),\] to model a quasi-periodic signal with a single evolutionary time scale \(\lambda\).
 

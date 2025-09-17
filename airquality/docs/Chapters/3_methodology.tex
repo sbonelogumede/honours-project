@@ -48,7 +48,7 @@
             \text{exp} \Big(-\frac{1}{2\sigma^2} \mathbf{x}^{\text{\text{T}}} \mathbf{x} \Big) \bigg)
          \end{align*}
          
-         One can use the `optim' funtion in `R' to obtain an estimate of \(\sigma\).
+         One can use the `optim' function in `R' to obtain an estimate of \(\sigma\).
 
       \subsubsection{Zero mean function and squared exponential kernel}
 
@@ -66,7 +66,7 @@
             \text{exp} \Big(-\frac{1}{2} \mathbf{x}^{\text{\text{T}}} \mathbf{K}^{-1} \mathbf{x} \Big) \bigg)
          \end{align*}
          
-         One can use the `optim' funtion in `R' to obtain estimates of \(\alpha\) and \(\rho\).
+         One can use the `optim' function in `R' to obtain estimates of \(\alpha\) and \(\rho\).
       
       \subsubsection{Multiple linear regression mean function and squared exponential kernel}
 
@@ -84,7 +84,7 @@
             \text{exp} \Big(-\frac{1}{2} (\mathbf{x} - \mathbf{X}\boldsymbol{\beta})^{\text{\text{T}}} \mathbf{K}^{-1} (\mathbf{x} - \mathbf{X}\boldsymbol{\beta}) \Big) \bigg)
          \end{align*}
 
-         One can use the `optim' funtion in `R' to obtain estimates of \(\boldsymbol{\beta}\), \(\alpha\) and \(\rho\).
+         One can use the `optim' function in `R' to obtain estimates of \(\boldsymbol{\beta}\), \(\alpha\) and \(\rho\).
    
    \subsection{Bayesian approach}
 
@@ -170,7 +170,7 @@
 
          \[f(x_{i}) = \beta_{0} + \sum_{j=1}^{p} \beta_{j} x_{ij}.\]
          \[k(x_{i},\, x_{j}) = \alpha^{2} \text{exp} \bigg(- \Big(\frac{x_i - x_j}{\rho} \Big)^2 \bigg).\]
-         A futher improvement on the previous models that allows accounting for a linear-trend and autocorrelation in the data. This is a reasonable assumption to make for some time series data.
+         A further improvement on the previous models that allows accounting for a linear-trend and autocorrelation in the data. This is a reasonable assumption to make for some time series data.
          Then \[\mathbf{m} = \mathbf{X}\boldsymbol{\beta}\]
 
          The prior distributions for the beta coefficients are as follows
