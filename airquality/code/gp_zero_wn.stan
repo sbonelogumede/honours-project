@@ -12,13 +12,13 @@ parameters {
 }
 
 model {
-  y1 ~ normal(X1*beta, sigma);
+  y1 ~ normal(rep_vector(0, n1), sigma);
 }
 
 generated quantities {
   vector[n2] y2;
 
   for(i in 1:n2){
-    y2[i] = normal_rng(dot_product(X2[i], beta), sigma);
+    y2[i] = normal_rng(0, sigma);
   }  
 }
