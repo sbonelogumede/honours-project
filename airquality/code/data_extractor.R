@@ -1,9 +1,13 @@
-# Import the required packages.
+
+# Attach the required packages.
 require(package = "dplyr")
 require(package = "readxl")
 
-extracted_data <- list(NA, NA) # Create storage.
-year <- c(2019, 2020) # Years of interest.
+# Create storage.
+extracted_data <- list(NA, NA)
+
+# Define the years of interest.
+year <- c(2019, 2020)
 
 # Import the data.
 for(i in 1:2){ 
@@ -22,8 +26,10 @@ for(i in 1:2){
 	# Initialize the new dataset with the date-time object.
 	outer_temp <- read_excel(path = paste("../data", file_name[1], sep = "/"),
 									 range = "A6:A8742",
-									 col_names = FALSE,
-									 col_types = "text")
+									 col_names = FALSE) |>
+		pull(var = 1) |>
+		as.POSIXct(format = "%d/%m/%Y %H:%M")
+	
 	for(j in 1:4){
 		# Read the column of interest from the data.
 		inner_temp <- read_excel(path = paste("../data", file_name[j], sep = "/"),
@@ -38,7 +44,8 @@ for(i in 1:2){
 				.x == "Zero" ~ 0,
 				TRUE ~ as.numeric(.x)
 			)))
-	
+		
+		# Add the current column to the new dataset.
 		outer_temp <- cbind(outer_temp, inner_temp)
 	}
 	
@@ -48,4 +55,5 @@ for(i in 1:2){
 	outer_temp <- NA
 }
 
+# Save the data into an object.
 save(extracted_data, file = "../objects/extracted_data_storage.RData")
