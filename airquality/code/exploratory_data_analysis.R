@@ -1,15 +1,14 @@
 
 # Attach the required packages.
 require(package = "corrplot")
-require(package = "dplyr")
-require(package = "ggplot2")
-require(package = "zoo")
 
-# Load the dataset.
+# Load the datasets.
 load(file = "../objects/extracted_data_storage.RData")
+load(file = "../objects/imputed_data_storage.RData")
 
-# Extract the training dataset.
+# Extract the datasets.
 X1 <- extracted_data[[1]]
+X2 <- imputed_data[[1]]
 
 # Declare variable names.
 var_name <- c("DateTime", "NO2", "PM10", "SO2", "Speed")
@@ -22,27 +21,38 @@ x_name <- c("DateTime",
             expression("Wind Speed" ~ "(m/s)"))
 
 # Calculate summary statistics.
-S_mat <- rbind("Min." = sapply(X = X1, FUN = min, na.rm = TRUE),
-               "1st Qu." = sapply(X = X1, FUN = quantile, 0.25, na.rm = TRUE),
-               "Median" = sapply(X = X1, FUN = median, na.rm = TRUE),
-               "Mean" = sapply(X = X1, FUN = mean, na.rm = TRUE),
-               "Std." = sapply(X = X1, FUN = sd, na.rm = TRUE),
-               "3rd Qu." = sapply(X = X1, FUN = quantile, 0.75, na.rm = TRUE),
-               "Max." = sapply(X = X1, FUN = max, na.rm = TRUE),
-               "NA's" = sapply(X = X1, FUN = function(column) sum(is.na(column))))
+summary_statistics <- function(X){
+   rbind("Min." = sapply(X = X, FUN = min, na.rm = TRUE),
+         "1st Qu." = sapply(X = X, FUN = quantile, 0.25, na.rm = TRUE),
+         "Median" = sapply(X = X, FUN = median, na.rm = TRUE),
+         "Mean" = sapply(X = X, FUN = mean, na.rm = TRUE),
+         "Std." = sapply(X = X, FUN = sd, na.rm = TRUE),
+         "3rd Qu." = sapply(X = X, FUN = quantile, 0.75, na.rm = TRUE),
+         "Max." = sapply(X = X, FUN = max, na.rm = TRUE),
+         "NA's" = sapply(X = X, FUN = function(column) sum(is.na(column))))
+}
+S_mat1 <- summary_statistics(X = X1)
+S_mat2 <- summary_statistics(X = X2)
 
 # Display summary statistics.
-print(x = round(x = t(x = S_mat[, 2:5]), digits = 3))
+print(x = round(x = t(x = S_mat1[, 2:5]), digits = 3))
+print(x = round(x = t(x = S_mat2[, 2:5]), digits = 3))
 
-# Plot scatter plots.
-for(j in 2:5){
-   filename <- paste0("../images/", tolower(x = var_name[j]), ".png")
-   png(filename = filename, width = 6.5, height = 4, res = 300, units = "in")
-   plot(x = X1$DateTime, y = X1[[var_name[j]]], 
-        main = "", xlab = "Time", ylab = x_name[j],
-        type = "l", col = "steelblue", cex = 0.5)
-   dev.off()
+# Sketch scatter plots.
+draw_plots <- function(X, name){
+   for(i in 2:5){
+      filename <- paste0("../images/", name, "_", tolower(x = var_name[i]), ".png")
+      png(filename = filename, width = 6.5, height = 4, res = 300, units = "in")
+      plot(x = X$DateTime, y = X[[var_name[i]]], 
+           main = "", xlab = "Time", ylab = x_name[i],
+           type = "l", col = "steelblue", cex = 0.5)
+      dev.off()
+   }
 }
+
+# Save scatter plots.
+draw_plots(X = X1, name = "extracted")
+draw_plots(X = X2, name = "imputed")
 
 # Plot a correlation plot.
 png(filename = "../images/corrplot.png", width = 6.5, height = 4, res = 300, units = "in")
