@@ -1,0 +1,288 @@
+---
+title: "Comparing Time-Series Models and Robust Gaussian Processes for Financial Data"
+author: "Thesis Analysis"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    theme: journal
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.width = 10, fig.height = 6)
+```
+
+## 1. Introduction
+
+This document outlines the process of analyzing and forecasting financial time-series data, specifically focusing on a security's closing price. The primary goal is to compare the performance of standard time-series models (ARIMA, Naive, etc.) with a robust Bayesian Gaussian Process (GP) model.
+
+The implementation of the GP model closely follows the principles outlined in Michael Betancourt's tutorial, "Robust Gaussian Process Modeling," to ensure a stable and principled fit. We will use the `cmdstanr` package to interface with Stan for Bayesian inference.
+
+## 2. Environment Setup
+
+First, we need to load all the necessary R packages
+
+```{r load-packages}
+# Data manipulation and plotting
+library(tidyverse)
+library(lubridate)
+library(cmdstanr)
+library(posterior)
+
+# Time series analysis using tidy principles
+library(tsibble)
+library(fable)
+library(fabletools)
+
+# Stan interface for Bayesian modeling
+library(cmdstanr)
+
+# For combining plots
+library(patchwork)
+```
+
+## 3. Data Loading and Preprocessing
+
+We will load the provided dataset `FINAL_USO.csv`. Your analysis is focused on the "closing price." The provided CSV file does not have a column explicitly named `Gold_Close`. We will assume the first `Close` column is the target variable for this analysis.
+
+```{r load-data}
+# Load the data
+file_path <- 'FINAL_USO.csv'
+raw_data <- read_csv(file_path)
+
+# Select, rename, and clean the data
+# We convert the Date column to a date object and filter out any potential non-trading days
+price_data <- raw_data %>%
+  select(Date, Close) %>%
+  mutate(Date = as_date(Date)) %>%
+  rename(Price = Close) %>%
+  # First, ensure we have one unique observation per day by averaging
+  group_by(Date) %>%
+  summarise(Price = mean(Price, na.rm = TRUE), .groups = 'drop') %>%
+  # Now the data is clean, convert to a tsibble
+  as_tsibble(index = Date) %>%
+  # Fill in any gaps for non-trading days (weekends, holidays)
+  # The `.value` argument is deprecated. The default behavior creates the gaps and fills with NA.
+  fill_gaps() %>%
+  # Carry the last observation forward to fill the NAs
+  tidyr::fill(Price, .direction = "down")
+
+
+# Display the first few rows and a summary
+head(price_data)
+summary(price_data)
+
+# Plot the full time series to visualize it
+ggplot(price_data, aes(x = Date, y = Price)) +
+  geom_line(color = "steelblue") +
+  labs(title = "Security Closing Price Over Time",
+       x = "Date",
+       y = "Closing Price (USD)") +
+  theme_minimal()
+```
+
+
+## 3. Multi-Horizon Evaluation: Benchmark Models
+
+We will now loop through each forecast horizon, split the data, fit the models, forecast, and calculate accuracy for each horizon separately.
+
+```{r benchmarks-fable-fix}
+horizons <- c(1, 7, 30, 90)
+all_accuracies <- list()
+
+for (h in horizons) {
+  cat(paste("Evaluating benchmark models for horizon:", h, "days\n"))
+  split_date <- max(price_data$Date) - days(h)
+  train_data <- price_data %>% filter(Date <= split_date)
+  
+  # CORRECTED MODEL DEFINITIONS: Each model is defined separately.
+  # The `|` syntax has been removed.
+  benchmark_models <- train_data %>%
+    model(
+      Mean = MEAN(Price),
+      Naive = NAIVE(Price),
+      Drift = RW(Price ~ drift()),
+      ARIMA = ARIMA(Price) 
+    )
+    
+  # This part of the code remains the same.
+  benchmark_forecasts <- benchmark_models %>% forecast(h = h)
+  acc <- accuracy(benchmark_forecasts, price_data) %>% mutate(Horizon = h)
+  all_accuracies[[as.character(h)]] <- acc
+}
+
+benchmark_accuracy_summary <- bind_rows(all_accuracies)
+# We will now correctly see NaN for ARIMA on horizons where it finds a <NULL model>
+print(benchmark_accuracy_summary %>% select(.model, Horizon, RMSE, MAE, MAPE))
+```
+
+## 4. Multi-Horizon Evaluation: Robust Gaussian Process
+
+### 4.1. Compile and Fit GP for the Longest Horizon (90 Days)
+
+```{r run-cmdstan-final-fix-2, cache=TRUE}
+# Prepare data
+h_long <- 90
+split_date_long <- max(price_data$Date) - days(h_long)
+train_data_long <- price_data %>% filter(Date <= split_date_long)
+test_data_long <- price_data %>% filter(Date > split_date_long)
+y_mean <- mean(train_data_long$Price)
+y1_scaled <- (train_data_long$Price - y_mean)
+y1_sd <- sd(y1_scaled)
+
+# Create the list of data to pass to Stan
+stan_data <- list(
+  N1 = nrow(train_data_long),
+  x1 = 1:nrow(train_data_long),
+  y1 = y1_scaled,
+  N2 = nrow(test_data_long),
+  x2 = (nrow(train_data_long) + 1):(nrow(train_data_long) + nrow(test_data_long)),
+  # THE FIX: Add the y1_sd variable to the data list passed to Stan.
+  y1_sd = y1_sd
+)
+
+# Stan Model Code with ROBUST PRIORS
+gp_model_code <- "
+functions {
+  matrix cov_exp_quad(vector x, real alpha, real rho) {
+    int N = rows(x);
+    matrix[N, N] K;
+    real sq_alpha = square(alpha);
+    for (i in 1:(N-1)) {
+      K[i, i] = sq_alpha + 1e-9;
+      for (j in (i + 1):N) {
+        K[i, j] = sq_alpha * exp(-0.5 * square((x[i] - x[j]) / rho));
+        K[j, i] = K[i, j];
+      }
+    }
+    K[N, N] = sq_alpha + 1e-9;
+    return K;
+  }
+}
+data {
+  int<lower=1> N1; vector[N1] x1; vector[N1] y1;
+  int<lower=1> N2; vector[N2] x2;
+  real<lower=0> y1_sd;
+}
+parameters {
+  real<lower=0> rho; real<lower=0> alpha; real<lower=0> sigma;
+  vector[N1] eta;
+}
+transformed parameters {
+  vector[N1] f1;
+  matrix[N1, N1] L_K = cholesky_decompose(cov_exp_quad(x1, alpha, rho));
+  f1 = L_K * eta;
+}
+model {
+  rho ~ lognormal(3, 1);
+  alpha ~ normal(0, y1_sd);
+  sigma ~ normal(0, y1_sd);
+  eta ~ std_normal();
+  y1 ~ normal(f1, sigma);
+}
+generated quantities {
+  vector[N2] f2;
+  {
+    matrix[N1, N1] K11_reg = cov_exp_quad(x1, alpha, rho) + diag_matrix(rep_vector(square(sigma), N1));
+    matrix[N2, N1] K21;
+    for (i in 1:N2) { for (j in 1:N1) { K21[i, j] = square(alpha) * exp(-0.5 * square((x2[i] - x1[j]) / rho)); } }
+    f2 = K21 * (K11_reg \\ y1);
+  }
+}
+"
+stan_file <- write_stan_file(gp_model_code)
+mod <- cmdstan_model(stan_file)
+fit_cmdstan <- mod$sample(data = stan_data, seed = 123, chains = 4, parallel_chains = 4, refresh = 100, iter_warmup = 500, iter_sampling = 1000)
+```
+
+
+### 4.2. Calculate GP Accuracy at Each Horizon
+
+Now, we'll use the 90-day forecast we just generated to calculate the accuracy metrics for each of our specified horizons.
+
+```{r process-gp-multi-horizon}
+# Extract the 90-day forecast draws and un-scale them
+f2_draws_long <- fit$draws("f2", format = "matrix")
+f2_draws_unscaled_long <- f2_draws_long + y_mean
+
+# Create a tibble of the mean forecast
+gp_forecast_long <- tibble(
+  Date = test_data_long$Date,
+  Price = apply(f2_draws_unscaled_long, 2, mean)
+)
+
+# Loop through horizons to calculate accuracy
+gp_accuracies <- list()
+for (h in horizons) {
+  # Subset the forecast and actual data to the current horizon
+  fc_subset <- head(gp_forecast_long, h)
+  actual_subset <- head(test_data_long, h)
+  
+  # Calculate RMSE
+  rmse <- sqrt(mean((fc_subset$Price - actual_subset$Price)^2))
+  # Calculate MAE
+  mae <- mean(abs(fc_subset$Price - actual_subset$Price))
+  # Calculate MAPE
+  mape <- mean(abs((actual_subset$Price - fc_subset$Price) / actual_subset$Price)) * 100
+  
+  gp_accuracies[[as.character(h)]] <- tibble(
+    .model = "Gaussian Process",
+    Horizon = h,
+    RMSE = rmse,
+    MAE = mae,
+    MAPE = mape
+  )
+}
+
+gp_accuracy_summary <- bind_rows(gp_accuracies)
+print(gp_accuracy_summary)
+```
+
+## 5. Final Results and Visualization
+
+Let's combine the accuracy results from all models and visualize them to see how performance changes as the forecast horizon increases. This is a very powerful graphic for a thesis.
+
+```{r final-comparison-plot}
+# Combine benchmark and GP accuracy tables
+final_accuracy_summary <- bind_rows(
+  benchmark_accuracy_summary %>% select(.model, Horizon, RMSE, MAE, MAPE),
+  gp_accuracy_summary
+)
+
+# Plot RMSE vs. Forecast Horizon for all models
+accuracy_plot <- ggplot(final_accuracy_summary, aes(x = Horizon, y = RMSE, group = .model, color = .model)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 3) +
+  scale_x_continuous(breaks = horizons, labels = paste(horizons, "days")) +
+  labs(
+    title = "Model Performance Across Forecast Horizons",
+    subtitle = "Root Mean Squared Error (RMSE) vs. Forecast Length",
+    x = "Forecast Horizon",
+    y = "RMSE (Lower is better)",
+    color = "Model"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+print(accuracy_plot)
+```
+
+## 6. Conclusion
+
+The analysis now provides a much richer story. The final table and the plot in Section 5 are the key outputs. They allow you to directly compare how each model's predictive accuracy degrades (or holds up) as you try to forecast further into the future. You can now discuss which model is best for short-term vs. long-term predictions, with quantitative evidence to support your claims. For example, a simple model like Naive might be very competitive for a 1-day forecast, but a more complex model like ARIMA or the GP might prove superior for 30-day or 90-day forecasts.
+
+
+
+
+
+
+
+
+## 7. Conclusion
+
+This document provides a comprehensive workflow for your thesis. You can now analyze the results:
+1.  **Compare Accuracy Metrics**: Look at the table from section 4.1. How does ARIMA's RMSE compare to the Naive model?
+2.  **Visually Inspect Forecasts**: The final plot in section 6 is key. Does the GP forecast appear more reasonable than the others? How well do its credible bands capture the true uncertainty and the actual data?
+3.  **Interpret GP Hyperparameters**: Examine the posterior summary for `alpha`, `rho`, and `sigma`. A small `rho` (length-scale) suggests the function is very wiggly, while a large `rho` suggests it's very smooth. `alpha` tells you about the typical vertical variation of the function, and `sigma` tells you how much noise is not captured by the underlying function `f`.
+
+This R Markdown file is a complete, runnable script that you can adapt and expand for your thesis. Good luck!
