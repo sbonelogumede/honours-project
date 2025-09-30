@@ -1,4 +1,3 @@
-
 # Attach the required packages.
 require(package = "imputeTS")
 
@@ -17,10 +16,10 @@ X22 <- X2[, -1]
 
 # Run Kalman filter interpolation.
 X12 <- apply(X = X12, MARGIN = 2, FUN = function(column){
-	na_kalman(x = column)
+	na_kalman(x = column, model = "StructTS", smooth = TRUE)
 }) |> as.data.frame()
 X22 <- apply(X = X22, MARGIN = 2, FUN = function(column){
-	na_kalman(x = column)
+	na_kalman(x = column, model = "StructTS", smooth = TRUE)
 }) |> as.data.frame()
 
 # Add the date time in to the data.

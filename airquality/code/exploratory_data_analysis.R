@@ -26,10 +26,10 @@ summary_statistics <- function(X){
          "1st Qu." = sapply(X = X, FUN = quantile, 0.25, na.rm = TRUE),
          "Median" = sapply(X = X, FUN = median, na.rm = TRUE),
          "Mean" = sapply(X = X, FUN = mean, na.rm = TRUE),
-         "Std." = sapply(X = X, FUN = sd, na.rm = TRUE),
+         "SD" = sapply(X = X, FUN = sd, na.rm = TRUE),
          "3rd Qu." = sapply(X = X, FUN = quantile, 0.75, na.rm = TRUE),
          "Max." = sapply(X = X, FUN = max, na.rm = TRUE),
-         "NA's" = sapply(X = X, FUN = function(column) sum(is.na(column))))
+         "NA" = sapply(X = X, FUN = function(column) sum(is.na(column))))
 }
 S_mat1 <- summary_statistics(X = X1)
 S_mat2 <- summary_statistics(X = X2)

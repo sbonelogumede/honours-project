@@ -27,3 +27,6 @@ mean((y2 - y2_hat)^2)
 # Plot the forecasts.
 p2 <- p2 + autolayer(object = y2_hat, series = "Gaussian process")
 p2
+
+# Save these objects.
+save(X1, y1, n1, p1, X2, y2, n2, p2, p, h, file = "../objects/window_data_storage.RData")

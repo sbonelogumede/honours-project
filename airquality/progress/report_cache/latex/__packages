@@ -1,0 +1,10 @@
+bayesplot
+cmdstanr
+corrplot
+forecast
+ggplot2
+kableExtra
+knitr
+StanHeaders
+rstan
+posterior

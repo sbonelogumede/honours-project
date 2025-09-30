@@ -70,7 +70,7 @@ generated quantities {
   // Predictive mean
   vector[n1] y1_centered = y1 - mu1;
   vector[n1] v = mdivide_left_tri_low(L, y1_centered);
-  vector[n1] w = mdivide_right_tri_low(v', L)';  // equivalent to solve(L', v)
+  vector[n1] w = mdivide_right_tri_low(v', L)';
   vector[n2] pred_mean = mu2 + K12' * w;
 
   // Predictive covariance

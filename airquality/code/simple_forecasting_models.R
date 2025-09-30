@@ -23,3 +23,6 @@ p2 <- p2 + autolayer(object = naive_fit, series = "Naive", PI = FALSE)
 p2 <- p2 + autolayer(object = snaive_fit, series = "Snaive", PI = FALSE)
 p2 <- p2 + autolayer(object = drift_fit, series = "Drift", PI = FALSE)
 p2
+
+# Save these objects.
+save(X1, y1, n1, p1, X2, y2, n2, p2, p, h, file = "../objects/window_data_storage.RData")
