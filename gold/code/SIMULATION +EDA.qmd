@@ -120,7 +120,7 @@ We simulate a synthetic series that shares key properties of the real dataset. T
 3.  No seasonal cycles (confirmed in EDA).
 
 ```{r, fig.cap="Figure 4.4: Simulated gold-like closing price series with downward drift, volatility clustering, and irregular fluctuations.", out.width="100%"}
-
+library(ggplot2)
 set.seed(123)
 
 n <- nrow(df)             # same length as real data
@@ -157,6 +157,269 @@ ggplot(sim_df, aes(x = Date, y = Sim_Close)) +
 The simulation produces a synthetic gold-like series of the same length as the real dataset. The first 800 days replicate the downward drift observed from 2012 to 2015. Thereafter, the process stabilizes around a constant level, reflecting the sideways dynamics from 2016 onward. Volatility clustering is incorporated by alternating between high- and low-variance noise regimes, which produces extended calm periods followed by turbulent fluctuations. Finally, a weak mean-reversion term ensures the process remains bounded between approximately 100 and 170 USD.
 
 This simulated dataset will serve as a controlled environment for testing Gaussian Process models and comparing them against benchmark time-series methods.
+
+```{r}
+#Check mean prediction
+library(kernlab)
+
+# Prepare data for GP regression
+x <- as.matrix(time)  # time index as input
+y <- sim_price        # simulated closing prices
+
+# Fit GP model (RBF kernel)
+gp_model <- gausspr(x, y, kernel = "rbfdot")
+
+# Predict (including on a test set if you wish)
+y_pred <- predict(gp_model, x)
+
+# Plot actual vs GP fit
+plot(x, y, type = "l", col = "darkgreen", lwd = 2, main = "GP Fit to Simulated Gold Price")
+lines(x, y_pred, col = "blue", lwd = 2)
+legend("topleft", legend = c("Simulated", "GP fit"), col = c("darkgreen", "blue"), lty = 1, lwd = 2)
+
+```
+
+\
+Bayesian Approach (Rstan)
+
+```{r}
+
+
+x <- sim_df$Date
+y <- sim_df$Sim_Close
+
+# It's strongly recommended to scale x and y for Stan numerical stability:
+x_scaled <- as.numeric(scale(x))
+y_scaled <- as.numeric(scale(y))
+N <- length(x_scaled)
+
+```
+
+```{r}
+library(rstan)
+options(mc.cores = parallel::detectCores())
+rstan_options(auto_write = TRUE)
+
+stan_data <- list(
+  N = length(x),
+  x = as.numeric(x),  # not as.matrix, not as.vector (if it's a matrix/column, use drop = TRUE)
+  y = as.numeric(y)
+)
+
+
+fit <- stan(
+  file = "gp_rbf.stan",
+  data = stan_data,
+  iter = 1000,
+  chains = 4,
+  seed = 42
+)
+
+print(fit, pars = c("alpha", "rho", "sigma"))
+
+```
+
+Marginal likelihood approach
+
+```{r}
+library(tidyverse)
+library(kernlab)
+
+# Simulate as before
+set.seed(123)
+df <- read_csv("FINAL_USO.csv") %>%
+  mutate(Date = as.Date(Date)) %>%
+  arrange(Date)
+n <- nrow(df)
+time <- 1:n
+
+trend <- ifelse(time < 800,
+                170 - 0.05 * time,
+                130)
+vol <- rep(c(2, 6), length.out = n)
+noise <- rnorm(n, mean = 0, sd = vol)
+sim_price <- trend + cumsum(noise * 0.2)
+sim_df <- data.frame(Date = df$Date, Sim_Close = sim_price
+
+```
+
+```{r}
+library(tidyverse)
+library(kernlab)
+
+# Simulate the series 
+set.seed(123)
+df <- read_csv("FINAL_USO.csv") %>%
+  mutate(Date = as.Date(Date)) %>%
+  arrange(Date)
+n <- nrow(df)
+time <- 1:n
+
+trend <- ifelse(time < 800, 170 - 0.05 * time, 130)
+vol <- rep(c(2, 6), length.out = n)
+noise <- rnorm(n, mean = 0, sd = vol)
+sim_price <- trend + cumsum(noise * 0.2)
+sim_df <- data.frame(Time = time, Date = df$Date, Sim_Close = sim_price)
+
+#  Fit a linear (drift) mean to the data 
+lin_fit <- lm(Sim_Close ~ Time, data = sim_df)
+mean_pred <- predict(lin_fit, newdata = sim_df)
+resid_gp <- sim_df$Sim_Close - mean_pred
+
+# Fit GP to the residuals 
+x_mat <- as.matrix(sim_df$Time)
+gp_fit <- gausspr(x = x_mat, y = resid_gp, kernel = "rbfdot")  # RBF kernel
+
+#  Predict on all data (add mean function back)
+gp_resid_pred <- predict(gp_fit, x_mat)
+gp_total_pred <- mean_pred + gp_resid_pred
+
+# Simulated series, drift fit, and GP+drift fit
+library(ggplot2)
+sim_df <- sim_df %>%
+  mutate(
+    Drift_Fit = mean_pred,
+    GP_Drift_Fit = gp_total_pred
+  )
+
+ggplot(sim_df, aes(x = Date)) +
+  geom_line(aes(y = Sim_Close), color = "darkgreen", size = 0.8, alpha = 0.7, linetype = "solid") +
+  geom_line(aes(y = Drift_Fit), color = "blue", size = 1, linetype = "dashed") +
+  geom_line(aes(y = GP_Drift_Fit), color = "red", size = 1.1, linetype = "solid") +
+  labs(
+    title = "Simulated Gold Price: True vs Drift Mean vs GP+Drift",
+    y = "Simulated Close Price (USD)",
+    x = "Date"
+  ) +
+  scale_color_manual(
+    values = c("Simulated" = "darkgreen", "Drift Mean" = "blue", "GP+Drift" = "red")
+  ) +
+  theme_minimal(base_size = 14)
+
+
+
+```
+
+```{r}
+library(tidyverse)
+library(kernlab)
+library(forecast)
+
+# --- Hold-out last 30 for testing 
+h <- 30
+train_idx <- 1:(n - h)
+test_idx  <- (n - h + 1):n
+train <- sim_df[train_idx, ]
+test  <- sim_df[test_idx, ]
+
+# --- Mean model ---
+mean_pred <- rep(mean(train$Sim_Close), h)
+
+# --- Naive model (last observed value) ---
+naive_pred <- rep(train$Sim_Close[nrow(train)], h)
+
+# --- Seasonal naive (1 year = 252 days) ---
+seasonal_period <- 252
+seasonal_naive_pred <- if (nrow(train) >= seasonal_period) {
+  train$Sim_Close[(nrow(train) - seasonal_period + 1):(nrow(train) - seasonal_period + h)]
+} else {
+  rep(mean(train$Sim_Close), h) 
+}
+
+# --- Drift model ---
+drift_mod <- rwf(train$Sim_Close, h = h, drift = TRUE)
+drift_pred <- as.numeric(drift_mod$mean)
+
+# --- AR(1) model ---
+ar_mod <- Arima(train$Sim_Close, order = c(1,0,0))
+ar_pred <- as.numeric(forecast(ar_mod, h = h)$mean)
+
+# --- GP + Drift 
+# Fit drift (linear model) to training data
+lin_fit <- lm(Sim_Close ~ Time, data = train)
+drift_train <- predict(lin_fit, newdata = train)
+drift_test  <- predict(lin_fit, newdata = test)
+resid_gp <- train$Sim_Close - drift_train
+
+# GP on training residuals
+x_mat <- as.matrix(train$Time)
+gp_fit <- gausspr(x = x_mat, y = resid_gp, kernel = "rbfdot")
+gp_pred_train <- predict(gp_fit, x_mat)
+gp_pred_test  <- predict(gp_fit, as.matrix(test$Time))
+
+# GP+Drift prediction
+gpdrift_pred <- drift_test + gp_pred_test
+
+# --- Metrics function ---
+metric_fun <- function(true, pred) {
+  rmse <- sqrt(mean((true - pred)^2))
+  mae  <- mean(abs(true - pred))
+  mape <- mean(abs((true - pred) / true)) * 100
+  c(RMSE = rmse, MAE = mae, MAPE = mape)
+}
+
+results <- tibble(
+  Model  = c("Mean", "Naive", "Seasonal Naive", "Drift", "AR(1)", "GP+Drift"),
+  RMSE   = c(
+    metric_fun(test$Sim_Close, mean_pred)[1],
+    metric_fun(test$Sim_Close, naive_pred)[1],
+    metric_fun(test$Sim_Close, seasonal_naive_pred)[1],
+    metric_fun(test$Sim_Close, drift_pred)[1],
+    metric_fun(test$Sim_Close, ar_pred)[1],
+    metric_fun(test$Sim_Close, gpdrift_pred)[1]
+  ),
+  MAE    = c(
+    metric_fun(test$Sim_Close, mean_pred)[2],
+    metric_fun(test$Sim_Close, naive_pred)[2],
+    metric_fun(test$Sim_Close, seasonal_naive_pred)[2],
+    metric_fun(test$Sim_Close, drift_pred)[2],
+    metric_fun(test$Sim_Close, ar_pred)[2],
+    metric_fun(test$Sim_Close, gpdrift_pred)[2]
+  ),
+  MAPE   = c(
+    metric_fun(test$Sim_Close, mean_pred)[3],
+    metric_fun(test$Sim_Close, naive_pred)[3],
+    metric_fun(test$Sim_Close, seasonal_naive_pred)[3],
+    metric_fun(test$Sim_Close, drift_pred)[3],
+    metric_fun(test$Sim_Close, ar_pred)[3],
+    metric_fun(test$Sim_Close, gpdrift_pred)[3]
+  )
+)
+
+print(results, n = Inf)
+
+```
+
+cmdstanr:
+
+```{r}
+library(cmdstanr)
+library(posterior)
+library(bayesplot)
+
+sim_df$Time <- as.numeric(sim_df$Date - min(sim_df$Date)) + 1
+X <- matrix(sim_df$Time, ncol = 1)
+y <- sim_df$Sim_Close
+n <- nrow(sim_df)
+
+```
+
+```{r}
+library(cmdstanr)
+stan_data <- list(N = n, x = as.vector(X), y = y)
+
+mod <- cmdstan_model("gp_regression.stan")
+fit <- mod$sample(
+  data = stan_data,
+  seed = 2024,
+  chains = 4,
+  parallel_chains = 4,
+  iter_warmup = 1000,
+  iter_sampling = 1000,
+  refresh = 500
+)
+
+```
 
 ### 4.7 Gaussian Process Modeling of Simulated Data
 
@@ -208,6 +471,7 @@ fit <- mod$sample(
 ```
 
 ### 4.7.4 Hyperparameter Analysis
+
 ```{r}
 # Extract posterior samples
 draws <- gp_fit$draws(format = "df")
@@ -219,9 +483,11 @@ mcmc_areas(draws, pars = c("rho", "alpha", "sigma")) +
   ggtitle("Posterior Distributions of GP Hyperparameters") +
   theme_minimal()
 ```
+
 The length scale parameter rho controls the smoothness of the GP function - larger values indicate smoother functions. The amplitude parameter alpha controls the marginal standard deviation of the process. The noise parameter sigma captures measurement error.
 
 ### 4.7.5 Posterior Predictive Checks
+
 Following Betancourt's emphasis on model validation, we perform posterior predictive checks:
 
 ```{r}
@@ -303,4 +569,111 @@ performance <- cbind(Model = c("Mean", "Naive", "Drift", "ARIMA"), performance)
 
 # Print performance table
 print(performance)
+```
+
+llllllllllll
+
+```{r}
+sim_df <- read_csv("simulated_gold_prices.csv")
+sim_df$Time <- as.numeric(sim_df$Date - min(as.Date(sim_df$Date))) + 1
+
+n <- nrow(sim_df)
+train_idx <- 1:(n - 30)      # all but last 30
+test_idx <- (n - 29):n       # last 30 for forecast
+
+X_train <- matrix(sim_df$Time[train_idx], ncol = 1)
+y_train <- sim_df$Sim_Close[train_idx]
+X_test  <- matrix(sim_df$Time[test_idx], ncol = 1)
+y_test  <- sim_df$Sim_Close[test_idx]
+
+# RBF kernel (default)
+gp_model <- gausspr(
+  x = X_train,
+  y = y_train,
+  kernel = "rbfdot"
+)
+
+
+```
+
+```{r}
+# In-sample fit
+gp_fit <- predict(gp_model, X_train)
+
+# Forecast (out-of-sample)
+gp_forecast <- predict(gp_model, X_test)
+
+```
+
+```{r}
+# Plot full fit and forecast
+plot(sim_df$Time, sim_df$Sim_Close, type = "l", col = "darkgreen", lwd = 2,
+     xlab = "Time", ylab = "Simulated Close Price", main = "GP Fit and Forecast")
+
+lines(sim_df$Time[train_idx], gp_fit, col = "blue", lwd = 2)
+lines(sim_df$Time[test_idx], gp_forecast, col = "red", lwd = 2)
+
+abline(v = sim_df$Time[n - 30], col = "gray", lty = 2)
+legend("topleft", legend = c("Simulated", "GP Fit", "GP Forecast"),
+       col = c("darkgreen", "blue", "red"), lty = 1, lwd = 2)
+
+```
+
+\
+
+```{r}
+mse  <- mean((y_test - gp_forecast)^2)
+mae  <- mean(abs(y_test - gp_forecast))
+mape <- mean(abs((y_test - gp_forecast) / y_test)) * 100
+
+cat(sprintf("Test MSE: %.3f, MAE: %.3f, MAPE: %.2f%%\n", mse, mae, mape))
+
+```
+
+```{r}
+library(cmdstanr)
+
+# Scale the time variable (important for GPs!)
+sim_df$Time_scaled <- as.numeric(scale(as.numeric(sim_df$Date)))
+N <- nrow(sim_df)
+
+# Prepare data
+stan_data <- list(
+  N = N,
+  x = sim_df$Time_scaled,
+  y = sim_df$Sim_Close
+)
+
+# Compile the Stan model
+mod <- cmdstan_model("gp_drift_model.stan")
+
+# Fit the model
+fit <- mod$sample(
+  data = stan_data,
+  seed = 123,
+  chains = 4,
+  iter_warmup = 500,
+  iter_sampling = 1000,
+  parallel_chains = 4,
+  refresh = 100
+)
+
+# Extract posterior summaries
+fit$print()
+
+# Extract posterior draws for prediction
+posterior <- fit$draws()
+beta0_hat <- mean(as.numeric(posterior[,"beta0"]))
+beta1_hat <- mean(as.numeric(posterior[,"beta1"]))
+
+# Posterior mean for drift
+mu_pred <- beta0_hat + beta1_hat * sim_df$Time_scaled
+
+# Plot (base R or ggplot2)
+plot(sim_df$Date, sim_df$Sim_Close, type = "l", col = "darkgreen", lwd = 2,
+     main = "Stan GP with Drift (cmdstanr)", xlab = "Date", ylab = "Simulated Close Price")
+lines(sim_df$Date, mu_pred, col = "blue", lwd = 2)
+legend("topleft", legend = c("Simulated", "Posterior Mean (Drift+GP)"),
+       col = c("darkgreen", "blue"), lwd = 2)
+
 ```

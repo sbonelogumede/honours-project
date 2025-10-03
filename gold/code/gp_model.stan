@@ -27,7 +27,7 @@ model {
       if (i != j)
         K[j, i] = K[i, j];
     }
-    K[i, i] = K[i, i] + square(sigma);  // Add noise term to diagonal
+    K[i, i] = K[i, i] + square(sigma)+1e-6;  // Add noise term to diagonal
   }
 
   mu = rep_vector(0, N);
