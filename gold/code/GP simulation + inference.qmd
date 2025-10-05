@@ -1,0 +1,467 @@
+---
+title: "Gaussian Process Simulation and Inference"
+format: pdf
+editor: visual
+---
+## Gaussian Process Framework
+
+A **Gaussian Process (GP)** is a distribution over functions such that any finite collection of function values follows a multivariate normal distribution:
+
+\[
+f(x) \sim \mathcal{GP}(m(x), k(x, x')).
+\]
+
+Here \(m(x)\) is the mean function and \(k(x, x')\) the covariance (kernel) function.
+```{r}
+
+set.seed(120)
+suppressPackageStartupMessages({
+  if (!requireNamespace("mvtnorm", quietly = TRUE)) install.packages("mvtnorm")
+  if (!requireNamespace("ggplot2", quietly = TRUE)) install.packages("ggplot2")
+})
+library(mvtnorm)
+library(ggplot2)
+
+# Helper: squared Euclidean distance for 1D vectors
+sqdist <- function(x, xprime) {
+  outer(x, xprime, function(a, b) (a - b)^2)
+}
+
+# Exponentiated quadratic (RBF) kernel = Stan's cov_exp_quad(alpha, rho)
+# K_ij = alpha^2 * exp( -0.5 * (x_i - x_j)^2 / rho^2 )
+cov_exp_quad <- function(x, xprime, alpha, rho) {
+  alpha^2 * exp(-0.5 * sqdist(x, xprime) / (rho^2))
+}
+
+# Tiny jitter (nugget) for numerical stability (same idea as tutorial's 1e-10)
+jitter_eps <- 1e-10
+
+```
+## GP Prior Simulation
+
+We adopt the **squared exponential (RBF) kernel**:
+
+\[
+k(x_i, x_j) = \alpha^2 \exp\!\left(-\frac{(x_i - x_j)^2}{2 \rho^2}\right),
+\]
+
+with hyperparameters:
+- \(\alpha\): marginal standard deviation (vertical variability),
+- \(\rho\): length-scale (smoothness).
+
+Given a grid of inputs \(\mathbf{x} = (x_1,\dots,x_n)\), the prior is
+
+\[
+\mathbf{f} \sim \mathcal{N}\!\big( \mathbf{0}, K(\mathbf{x},\mathbf{x}) + \epsilon I \big),
+\]
+
+where \(K\) is the Gram matrix of kernel evaluations and \(\epsilon\) is a small jitter term.
+
+
+```{r}
+# Simulate from a GP prior
+
+
+N  <- 551
+x  <- 22 * (0:(N - 1)) / (N - 1) - 11
+
+
+alpha_true <- 3
+rho_true   <- 5.5
+
+# Prior covariance on the grid + jitter
+K_xx <- cov_exp_quad(x, x, alpha_true, rho_true) + diag(jitter_eps, N)
+
+# Draw ONE prior sample f ~ N(0, K_xx)
+f_prior <- as.numeric(rmvnorm(1, mean = rep(0, N), sigma = K_xx))
+#One draw
+qplot(x, f_prior, geom = "line") +
+  labs(title = "One GP prior draw", x = "x", y = "f(x)")
+
+```
+
+## Observational Model
+
+We assume noisy Gaussian observations:
+
+\[
+y_i \sim \mathcal{N}(f(x_i), \sigma^2),
+\]
+
+with \(\sigma^2\) denoting measurement noise variance.
+
+```{r}
+#  Simulate data with a Gaussian likelihood 
+
+sigma_true <- 2  
+
+obs_idx <- 50 * (0:10) + 26   
+x_obs   <- x[obs_idx]
+f_obs   <- f_prior[obs_idx]
+y_obs   <- f_obs + rnorm(length(obs_idx), 0, sigma_true)
+
+
+df_all <- data.frame(x = x, f = f_prior)
+df_obs <- data.frame(x = x_obs, y = y_obs)
+ggplot() +
+  geom_line(data = df_all, aes(x, f), linewidth = 0.6) +
+  geom_point(data = df_obs, aes(x, y), size = 2) +
+  labs(title = "Noisy observations from GP + Gaussian noise",
+       x = "x", y = "y")
+
+```
+
+```{r}
+
+# Fit GP regression analytically 
+# (Posterior of f_* | y with Gaussian noise)
+
+# cross-covariances
+K_oo <- cov_exp_quad(x_obs, x_obs, alpha_true, rho_true) + diag(sigma_true^2, length(obs_idx))
+K_po <- cov_exp_quad(x, x_obs, alpha_true, rho_true)   # pred x obs
+K_pp <- cov_exp_quad(x, x, alpha_true, rho_true)       # pred x pred
+
+L_oo <- chol(K_oo)                                     # K_oo = L L^T
+alpha_vec <- backsolve(L_oo, forwardsolve(L_oo, y_obs, upper.tri = TRUE, transpose = TRUE))
+
+post_mu <- K_po %*% alpha_vec
+
+
+V <- backsolve(L_oo, t(K_po), upper.tri = TRUE, transpose = TRUE)
+post_cov <- K_pp - t(V) %*% V
+
+
+set.seed(123)
+n_draw <- 50
+f_post_draws <- rmvnorm(n_draw, mean = as.numeric(post_mu), sigma = post_cov)
+
+
+post_sd <- sqrt(diag(post_cov))
+df_post <- data.frame(x = x, mu = as.numeric(post_mu), lo = post_mu - 2*post_sd, hi = post_mu + 2*post_sd)
+
+ggplot() +
+  geom_ribbon(data = df_post, aes(x, ymin = lo, ymax = hi), alpha = 0.2) +
+  geom_line(data = df_post, aes(x, y = mu), linewidth = 0.8) +
+  geom_point(data = df_obs, aes(x, y), size = 2) +
+  labs(title = "Analytic GP posterior (mean ± 2sd)",
+       x = "x", y = "f(x)")
+
+```
+
+```{r}
+# Spaghetti: overlay posterior function draws
+draw_df <- data.frame(x = rep(x, n_draw),
+                      f = as.vector(t(f_post_draws)),
+                      draw = factor(rep(1:n_draw, each = length(x))))
+
+ggplot(draw_df, aes(x, f, group = draw)) +
+  geom_line(alpha = 0.35, col = "darkblue") +
+  geom_point(data = df_obs, aes(x, y), inherit.aes = FALSE, size = 2) +
+  labs(title = "Posterior draws ('spaghetti') + observations",
+       x = "x", y = "f(x)")
+
+
+```
+## Posterior Conditioning
+
+Conditioning on observed data \((\mathbf{x}_{obs}, \mathbf{y}_{obs})\), the posterior distribution at new points \(\mathbf{x}_*\) is Gaussian:
+
+\[
+\mathbf{f}_* \mid \mathbf{y}_{obs} \sim 
+\mathcal{N}(\mu_*, \Sigma_*),
+\]
+
+where
+
+\[
+\mu_* = K(\mathbf{x}_*, \mathbf{x}_{obs}) 
+\big[ K(\mathbf{x}_{obs}, \mathbf{x}_{obs}) + \sigma^2 I \big]^{-1} \mathbf{y}_{obs},
+\]
+
+\[
+\Sigma_* = K(\mathbf{x}_*, \mathbf{x}_*) -
+K(\mathbf{x}_*, \mathbf{x}_{obs}) 
+\big[ K(\mathbf{x}_{obs}, \mathbf{x}_{obs}) + \sigma^2 I \big]^{-1} 
+K(\mathbf{x}_{obs}, \mathbf{x}_*).
+\]
+
+This yields closed-form inference without MCMC.
+
+
+
+
+
+## Hyperparameter Recovery
+
+In practice, we do not know \(\alpha, \rho, \sigma\).  
+They can be estimated by maximizing the **marginal likelihood**:
+
+\[
+\log p(\mathbf{y}_{obs} \mid \mathbf{x}_{obs}, \alpha, \rho, \sigma)
+= -\tfrac{1}{2} \mathbf{y}_{obs}^\top
+\big( K(\mathbf{x}_{obs},\mathbf{x}_{obs}) + \sigma^2 I \big)^{-1} 
+\mathbf{y}_{obs}
+- \tfrac{1}{2} \log \lvert K(\mathbf{x}_{obs},\mathbf{x}_{obs}) + \sigma^2 I \rvert
+- \tfrac{n}{2}\log 2\pi.
+\]
+
+Optimizing this function with respect to \(\alpha, \rho, \sigma\) recovers the hyperparameters used to generate the data.  
+In simulation experiments, when the model is correctly specified and sufficient data are available, the estimated hyperparameters are close to the true generating values.
+
+```{r}
+#  optimize marginal likelihood for GP hyperparameters
+neg_log_marglik <- function(params) {
+  alpha <- exp(params[1])   # positivity constraint
+  rho   <- exp(params[2])
+  sigma <- exp(params[3])
+  
+  K <- cov_exp_quad(x_obs, x_obs, alpha, rho) + diag(sigma^2, length(x_obs))
+  L <- chol(K)
+  alpha_vec <- backsolve(L, forwardsolve(t(L), y_obs))
+  
+  term1 <- 0.5 * sum(alpha_vec^2)
+  term2 <- sum(log(diag(L)))
+  term3 <- 0.5 * length(y_obs) * log(2*pi)
+  
+  return(term1 + term2 + term3)
+}
+
+fit <- optim(par = log(c(1,1,1)), fn = neg_log_marglik)
+exp(fit$par)   # recovered (alpha, rho, sigma)
+
+```
+
+## Hyper-parameter Recovery: Challenges and Remedies
+
+While Gaussian process regression provides closed-form inference for latent functions, recovering the **true hyper-parameters** \((\alpha,\rho,\sigma)\) from data is often difficult. In our simulations, we generated data with
+\[
+\alpha=3,\;\rho=5.5,\;\sigma=2,
+\]
+but the maximum likelihood estimates were
+\[
+\hat{\alpha} \approx 0.65,\;\hat{\rho}\approx 3.53,\;\hat{\sigma}\approx 1.88.
+\]
+
+### Why does recovery fail?
+
+1. **Limited data.**  
+   With only \(n=11\) observations, the marginal likelihood does not contain enough information to separate signal variance (\(\alpha\)) from noise variance (\(\sigma\)). This leads to a trade-off: the optimizer shrinks \(\alpha\) while inflating \(\sigma\).
+
+2. **Noise–signal trade-off.**  
+   The marginal likelihood is
+   \[
+   \log p(\mathbf{y}\mid \alpha,\rho,\sigma)
+   = -\tfrac{1}{2}\mathbf{y}^\top \big( K_{\text{obs},\text{obs}} + \sigma^2 I\big)^{-1}\mathbf{y}
+   - \tfrac{1}{2}\log\lvert K_{\text{obs},\text{obs}} + \sigma^2 I\rvert
+   - \tfrac{n}{2}\log 2\pi,
+   \]
+   where \(K_{\text{obs},\text{obs}}\) is the kernel Gram matrix.  
+   The terms \(\alpha\) (signal variance) and \(\sigma\) (noise variance) can compensate for one another: a large \(\sigma\) can mimic smaller \(\alpha\), yielding similar likelihood values.
+
+3. **Length-scale identifiability.**  
+   The length-scale \(\rho\) is sensitive to the spacing of inputs. With few points, the optimizer favors smaller \(\rho\) (wigglier functions) that can absorb apparent noise.
+
+4. **Non-convex objective.**  
+   The marginal likelihood surface can contain multiple local optima, so gradient-based optimization may converge to suboptimal values.
+
+---
+
+### Remedies
+
+- **More data:** Increasing the number of observed points improves identifiability and reduces the variance–noise trade-off.  
+- **Input scaling:** Normalizing \(x\) (e.g., to \([-1,1]\)) makes the length-scale \(\rho\) easier to estimate.  
+- **Multiple restarts:** Running the optimizer from diverse initializations helps avoid poor local minima.  
+- **MAP estimation with priors:** Adding weakly-informative priors on \(\log \alpha, \log \rho, \log \sigma\) stabilizes estimation:
+  \[
+  \log \alpha \sim \mathcal{N}(\log 3,\,0.5^2), \quad
+  \log \rho \sim \mathcal{N}(\log 5,\,0.5^2), \quad
+  \log \sigma \sim \mathcal{N}(\log 2,\,0.5^2).
+  \]
+  This regularizes the optimizer towards realistic scales.  
+- **Bayesian inference:** Sampling \((\alpha,\rho,\sigma)\) with MCMC (e.g. in Stan) quantifies posterior uncertainty, rather than relying on a point estimate.
+
+---
+
+### Interpretation of Our Simulation
+
+Our experiment highlights that **exact hyper-parameter recovery is not guaranteed** in finite-sample, noisy settings. However, the **posterior mean predictions** of the GP can still interpolate the data accurately even if hyper-parameters are mis-estimated. This is a key reason why Gaussian processes are robust in practice: predictive performance is often good even when parameter recovery is imperfect.
+
+## Effect of Number of Observations on Hyper-parameter Recovery
+
+We repeated the Gaussian Process (GP) simulation with two different levels of conditioning data:
+
+- **Sparse setting:** \(n=11\) evenly spaced points across the domain.  
+- **Dense setting:** \(n=50\) evenly spaced points.  
+
+Both cases were generated from the same GP prior with true parameters
+\[
+\alpha = 3, \quad \rho = 5.5, \quad \sigma = 2.
+\]
+
+### Experimental design
+
+For each setting, we fit the GP hyper-parameters by maximizing the marginal likelihood
+\[
+\log p(\mathbf{y} \mid \alpha, \rho, \sigma) 
+= -\tfrac{1}{2} \mathbf{y}^\top \big( K + \sigma^2 I \big)^{-1} \mathbf{y}
+- \tfrac{1}{2} \log |K + \sigma^2 I|
+- \tfrac{n}{2}\log 2\pi,
+\]
+where \(K\) is the Gram matrix under the RBF kernel.  
+
+### Results
+
+```{r}
+set.seed(494838)
+
+
+sqdist <- function(x, xp) outer(x, xp, function(a,b) (a-b)^2)
+cov_exp_quad <- function(x, xp, alpha, rho) alpha^2 * exp(-0.5 * sqdist(x,xp)/rho^2)
+
+neg_log_marglik <- function(par_log, x_obs, y_obs){
+  alpha <- exp(par_log[1]); rho <- exp(par_log[2]); sigma <- exp(par_log[3])
+  Koo <- cov_exp_quad(x_obs, x_obs, alpha, rho) + diag(sigma^2, length(x_obs))
+  L   <- chol(Koo)
+  v   <- backsolve(L, y_obs, transpose = TRUE)
+  term1 <- 0.5 * sum(v^2)
+  term2 <- sum(log(diag(L)))
+  term3 <- 0.5 * length(y_obs) * log(2*pi)
+  term1 + term2 + term3
+}
+
+# simulate prior function
+alpha_true <- 3; rho_true <- 5.5; sigma_true <- 2
+N  <- 551
+x  <- 22 * (0:(N - 1)) / (N - 1) - 11
+Kxx <- cov_exp_quad(x, x, alpha_true, rho_true) + diag(1e-10, N)
+f   <- as.numeric(MASS::mvrnorm(1, mu = rep(0, N), Sigma = Kxx))
+
+# function to fit given n_obs
+fit_gp <- function(n_obs){
+  idx <- seq(1, N, length.out = n_obs)
+  x_obs <- x[idx]
+  y_obs <- f[idx] + rnorm(n_obs, 0, sigma_true)
+  # optimize
+  opt <- optim(log(c(1,1,1)), neg_log_marglik, x_obs = x_obs, y_obs = y_obs,
+               method="L-BFGS-B",
+               lower = log(c(1e-4,1e-4,1e-4)), upper = log(c(1e3,1e3,1e3)))
+  exp(opt$par)
+}
+
+hat_11 <- fit_gp(11)
+hat_100 <- fit_gp(50)
+
+rbind(
+  truth = c(alpha_true, rho_true, sigma_true),
+  estimated_11 = hat_11,
+  estimated_100 = hat_100
+)
+```
+```{r}
+
+library(rstan)
+rstan_options(auto_write = TRUE)
+options(mc.cores = parallel::detectCores())
+
+
+set.seed(494838)
+sqdist <- function(x, xp) outer(x, xp, function(a,b) (a-b)^2)
+cov_exp_quad <- function(x, xp, alpha, rho) alpha^2 * exp(-0.5 * sqdist(x,xp)/rho^2)
+
+alpha_true <- 3; rho_true <- 5.5; sigma_true <- 2
+Ngrid <- 551
+xgrid <- 22 * (0:(Ngrid - 1)) / (Ngrid - 1) - 11
+
+Kxx <- cov_exp_quad(xgrid, xgrid, alpha_true, rho_true) + diag(1e-10, Ngrid)
+fgrid <- as.numeric(MASS::mvrnorm(1, mu = rep(0, Ngrid), Sigma = Kxx))
+
+
+n_obs <- 50
+idx <- round(seq(1, Ngrid, length.out = n_obs))
+x_obs <- xgrid[idx]
+y_obs <- fgrid[idx] + rnorm(n_obs, 0, sigma_true)
+
+stan_data <- list(N = n_obs, x = x_obs, y = y_obs)
+
+sm <- stan_model("gp_bayes_noncentered.stan")
+fit <- sampling(sm, data = stan_data, seed = 5838298,
+                iter = 2000, warmup = 1000, chains = 4, refresh = 500)
+
+print(fit, pars = c("alpha","rho","sigma"), probs = c(.025,.5,.975))
+
+# Posterior predictive checks (observed inputs)
+yrep <- rstan::extract(fit, pars = "y_rep")$y_rep
+ppc_mean <- cbind(obs = y_obs, pred_mean = colMeans(yrep))
+head(ppc_mean)
+
+```
+
+```{r}
+# Libraries
+library(ggplot2)
+
+# Example observed data (replace with your own x_obs, y_obs)
+set.seed(42)
+n_obs <- 50
+x_obs <- seq(-5, 5, length.out = n_obs)
+y_obs <- sin(x_obs) + rnorm(n_obs, 0, 0.3)
+
+# Example posterior predictive draws (replace with extract(fit)$y_rep)
+# 1000 draws from predictive distribution
+yrep <- replicate(1000, sin(x_obs) + rnorm(n_obs, 0, 0.3))
+
+# Compute posterior predictive summaries
+pred_mean <- apply(yrep, 1, mean)
+pred_lo   <- apply(yrep, 1, quantile, 0.05)
+pred_hi   <- apply(yrep, 1, quantile, 0.95)
+
+# Data frames for plotting
+df_pred <- data.frame(x = x_obs,
+                      mean = pred_mean,
+                      lo = pred_lo,
+                      hi = pred_hi)
+
+df_obs <- data.frame(x = x_obs, y = y_obs)
+
+# Plot
+ggplot() +
+  geom_ribbon(data = df_pred, aes(x = x, ymin = lo, ymax = hi),
+              fill = "lightblue", alpha = 0.5) +
+  geom_line(data = df_pred, aes(x = x, y = mean), color = "blue") +
+  geom_point(data = df_obs, aes(x = x, y = y), color = "black") +
+  labs(title = "Posterior Predictive Check",
+       x = "x", y = "y") +
+  theme_minimal()
+
+```
+
+```{r}
+#
+f_draws <- rstan::extract(fit, pars="f")$f   # shape: iterations x N_predict
+yrep    <- rstan::extract(fit, pars="y_rep")$y_rep
+
+# Summarize quantiles
+pred_mean <- apply(yrep, 2, mean)
+pred_lo   <- apply(yrep, 2, quantile, 0.10)  # 10%
+pred_hi   <- apply(yrep, 2, quantile, 0.90)  # 90%
+
+df <- data.frame(x = x_obs, y = y_obs,
+                 mean = pred_mean, lo = pred_lo, hi = pred_hi)
+
+library(ggplot2)
+ggplot(df, aes(x=x)) +
+  geom_ribbon(aes(ymin=lo, ymax=hi), fill="lightblue", alpha=0.5) +
+  geom_line(aes(y=mean), color="blue") +
+  geom_point(aes(y=y), color="black") +
+  labs(title="Posterior Predictive Marginal Quantiles",
+       x="x", y="y") +
+  theme_minimal()
+
+
+```
+```{r}
+
+```
+
+
+

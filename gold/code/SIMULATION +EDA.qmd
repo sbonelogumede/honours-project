@@ -247,7 +247,7 @@ sim_df <- data.frame(Date = df$Date, Sim_Close = sim_price
 library(tidyverse)
 library(kernlab)
 
-# Simulate the series 
+
 set.seed(123)
 df <- read_csv("FINAL_USO.csv") %>%
   mutate(Date = as.Date(Date)) %>%
@@ -305,20 +305,20 @@ library(tidyverse)
 library(kernlab)
 library(forecast)
 
-# --- Hold-out last 30 for testing 
+
 h <- 30
 train_idx <- 1:(n - h)
 test_idx  <- (n - h + 1):n
 train <- sim_df[train_idx, ]
 test  <- sim_df[test_idx, ]
 
-# --- Mean model ---
+# Mean model
 mean_pred <- rep(mean(train$Sim_Close), h)
 
-# --- Naive model (last observed value) ---
+# Naive model (last observed value) 
 naive_pred <- rep(train$Sim_Close[nrow(train)], h)
 
-# --- Seasonal naive (1 year = 252 days) ---
+#Seasonal naive (1 year = 252 days) 
 seasonal_period <- 252
 seasonal_naive_pred <- if (nrow(train) >= seasonal_period) {
   train$Sim_Close[(nrow(train) - seasonal_period + 1):(nrow(train) - seasonal_period + h)]
@@ -326,16 +326,15 @@ seasonal_naive_pred <- if (nrow(train) >= seasonal_period) {
   rep(mean(train$Sim_Close), h) 
 }
 
-# --- Drift model ---
+# Drift model 
 drift_mod <- rwf(train$Sim_Close, h = h, drift = TRUE)
 drift_pred <- as.numeric(drift_mod$mean)
 
-# --- AR(1) model ---
+# AR(1) model 
 ar_mod <- Arima(train$Sim_Close, order = c(1,0,0))
 ar_pred <- as.numeric(forecast(ar_mod, h = h)$mean)
 
-# --- GP + Drift 
-# Fit drift (linear model) to training data
+# GP + Drift , note the drift is fitted to training data
 lin_fit <- lm(Sim_Close ~ Time, data = train)
 drift_train <- predict(lin_fit, newdata = train)
 drift_test  <- predict(lin_fit, newdata = test)
@@ -390,6 +389,8 @@ print(results, n = Inf)
 
 ```
 
+try GP-0-RBF next
+
 cmdstanr:
 
 ```{r}
@@ -437,7 +438,7 @@ Gaussian Processes assume stationarity in their kernels. Since our simulated ser
 ```{r}
 library(cmdstanr)
 
-# Standardize simulated price
+# Stand. sim price
 y <- scale(sim_df$Sim_Close, center = TRUE, scale = TRUE)
 x <- 1:length(y)
 
@@ -455,10 +456,10 @@ We adopt the squared exponential (RBF) kernel, written explicitly as in Betancou
 ### 4.7.3 Model Fitting and Diagnostics
 
 ```{r}
-# Compile Stan model
+
 mod <- cmdstan_model("gp_model.stan")
 
-# Sample
+
 fit <- mod$sample(
   data = gp_data,
   seed = 2025,
@@ -473,12 +474,13 @@ fit <- mod$sample(
 ### 4.7.4 Hyperparameter Analysis
 
 ```{r}
-# Extract posterior samples
+library(bayesplot)
+
 draws <- gp_fit$draws(format = "df")
 
-# Hyperparameter posterior distributions
+# Hyperparameter posterior dist
 
-library(bayesplot)
+
 mcmc_areas(draws, pars = c("rho", "alpha", "sigma")) +
   ggtitle("Posterior Distributions of GP Hyperparameters") +
   theme_minimal()
@@ -501,7 +503,7 @@ ppc_dens_overlay(gp_data$y, y_rep[1:100, ]) +
   ggtitle("Posterior Predictive Check: Density Overlay") +
   theme_minimal()
 
-# Check key statistics
+
 ppc_stat(gp_data$y, y_rep, stat = "mean") +
   ggtitle("PPC: Mean")
 
@@ -510,11 +512,11 @@ ppc_stat(gp_data$y, y_rep, stat = "sd") +
 ```
 
 ```{r}
-# Load necessary libraries
+
 library(forecast)
 library(tidyverse)
 
-# Assume sim_df already exists with Sim_Close and Date columns
+
 sim_ts <- ts(sim_df$Sim_Close, frequency = 1)  # No seasonality, daily data
 
 # Split data into train/test (e.g., last 100 points for testing)
@@ -522,23 +524,21 @@ n <- length(sim_ts)
 train <- window(sim_ts, end = n - 100)
 test <- window(sim_ts, start = n - 99)
 
-# 1. Mean Forecast (Average)
+# Mean Forecast (Average)
 mean_fit <- meanf(train, h = 100)
 
-# 2. Naive Forecast
+# Naive Forecast
 naive_fit <- naive(train, h = 100)
 
-# 3. Drift Forecast
+#  Drift Forecast
 drift_fit <- rwf(train, h = 100, drift = TRUE)
 
-# 4. ARIMA Forecast
+# ARIMA Forecast , use AR(1) INSTEAD 
 arima_fit <- auto.arima(train)
 arima_forecast <- forecast(arima_fit, h = 100)
 
-# 5. GP Forecast (already generated earlier, assume vector `gp_forecast`)
-# If in R: use colMeans(gp_fit$draws("f_rep", format = "matrix"))[(length(train)+1):(length(train)+100)]
+# GP Forecast
 
-# Combine forecasts into a tibble
 forecasts <- tibble(
   Actual = as.numeric(test),
   Mean = as.numeric(mean_fit$mean),
@@ -564,10 +564,9 @@ performance <- bind_rows(
   evaluate(forecasts$ARIMA, forecasts$Actual)
 )
 
-# Add model labels
 performance <- cbind(Model = c("Mean", "Naive", "Drift", "ARIMA"), performance)
 
-# Print performance table
+# performance table
 print(performance)
 ```
 
