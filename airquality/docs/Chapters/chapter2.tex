@@ -1,0 +1,71 @@
+\section{Literature Review}
+
+In this chapter, we introduce time series analysis (TSA) and relate its importance. We then discuss classes of models common in TSA. Our main focus is on a special class of models called Gaussian processes (GPs).
+
+\subsection{Introduction to time series analysis}
+
+Before defining time series analysis, we must understand the concept of time series data (TSD). TSD is data that is collected at equally spaced intervals of time over a period. As an example, the hourly sales of ice cream at a local food shop are. 
+
+TSD is common and appears in application fields, such as biology, economics, finance, and more. As statisticians, we need to understand this type of data so that we can derive insights from it.
+
+We can define this dataset mathematically as \({(\mathbf{X},\, \mathbf{y})}\) where \(\mathbf{X}\) represents the matrix of explanatory variables (including time) on the columns and \(\mathbf{y}\) is the response variable. We can partition this dataset into a training dataset, \({(\mathbf{X}_{1},\, \mathbf{y}_{1})}\) of size \(n_{1} \times (k+1)\), and a testing dataset, \({(\mathbf{X}_{2},\, \mathbf{y}_{2})}\) of size \(n_{2} \times (k+1)\).
+
+Since TSD is collected at equally spaced intervals of time, the observations are likely to be dependent or correlated. This correlation of a variable with lagged values of itself is called autocorrelation. Standard statistical techniques, such as simple linear regression, which assume independence of observations, are not effective in modelling time series data.
+
+There is a special type of TSD called a stationary time series. A stationary time series is a time series whose statistical properties are independent of time. This implies that moments such as the mean and variance are not functions of time. Most TSDs that we encounter are non-stationary.  
+
+We need models that account for autocorrelation between observations. We only focus on ARIMA and GPs in this paper. Before we delve into those complicated models, we start with the simple forecasting models (SFMs). SFMs are easy to understand and fit into the data. These perform well for some TSD. They are used as benchmark models to compare against complicated models. 
+
+\subsection{Simple forecasting models}
+
+The SFMs are the average, naive, seasonal naive, and drift models. The prediction of the average model is the average of the observations. \[\hat{y}_{T+h|T} = \frac{1}{T} \sum_{t=1}^{T} y_{t}.\] The prediction for the naive model is the last observed value. \[\hat{y}_{T+h|T} = y_{T}.\] The prediction for the seasonal naive model is the last value of the previous season (e.g., the prediction of total ice cream sales this year's summer is the total ice cream sales of last year's summer).  \[\hat{y}_{T+h|T} = y_{T+h-m(k+1)},\] where \(m\) is the seasonal period and \(k\) is the integer part of \((h-1)/m\). The prediction for the drift model is the last observed value adjusted for the average trend in a time series.  \[\hat{y}_{T+h|T} = y_{T} + h \Big(\frac{y_{T} - y_{1}}{T-1} \Big).\]
+
+\subsection{ARIMA models}
+
+Auto Regressive and Integrated Moving Average (ARIMA) models are combinations of Auto Regressive (AR) models and Moving Average (MA) models. The prediction of AR models is a constant term plus the regression of past observations plus some error term (typically white noise). \[Y_{t} = c + \phi_{1}Y_{t-1} + \phi_{2}Y_{t-2} + \ldots + \phi_{p}Y_{t-p} + \epsilon_{t},\] where \(\epsilon_{t}\) is a white noise process with mean 0 and variance \(\sigma^2\) that represents the error of the series, and \(c\) is a constant related to the mean of the process. The prediction of MA models is a constant term plus the regression of past errors. \[Y_{t} = c + \theta_{1} \epsilon_{t-1} +  \theta_{2} \epsilon_{t-2} + \ldots +  \theta_{q} \epsilon_{t-q},\] where \(\epsilon_{t}\) is a white noise process with mean 0 and variance \(\sigma^2\) that represents the error of the series, and \(c\) is a constant related to the mean of the process. Thus, the prediction for an ARIMA model is a constant term plus a regression of past observations, plus a regression of past errors, plus some error term (typically white noise). \[Y_{t} = c + \phi_{1}Y_{t-1} + \phi_{2}Y_{t-2} + \ldots + \phi_{p}Y_{t-p} + \epsilon_{t} + \theta_{1} \epsilon_{t-1} +  \theta_{2} \epsilon_{t-2} + \ldots +  \theta_{q} \epsilon_{t-q},\] where \(p\) is the number of autoregressive terms, \(d\) is the order of differencing and \(q\) is the number of moving average terms.
+
+\subsection{Gaussian processes}
+
+A Gaussian process is a stochastic process where at every finite collection of points the joint distribution is a multivariate normal distribution. A GP is completely determined by its mean function and covariance function. The mean function can be any real-valued function; however, the covariance function must be chosen carefully to produce a semi-definite matrix. We now consider common mean functions and common covariance functions.
+\[f(x_{i}) \sim \text{GP}(m(x_{i}), \, k(x_{i},\, x_{j})).\]
+
+\(\mathbf{x} =
+\begin{bmatrix}
+   X_{1} \\
+   \vdots \\
+   X_{n}
+\end{bmatrix}
+\:
+\sim \mathcal{N}_{n}(\mathbf{m}, \, \mathbf{K}),
+\:
+\text{where}
+\:
+\mathbf{m} = 
+\begin{bmatrix}
+   m(x_{1}) \\
+   m(x_{2}) \\
+   \vdots \\
+   m(x_{n})
+\end{bmatrix}  
+\: 
+\text{and}
+\:
+\mathbf{K} = 
+\begin{bmatrix}
+   k(x_{1}, \, x_{1}) & k(x_{1}, \, x_{2}) & \cdots & k(x_{1}, \, x_{n}) \\
+   k(x_{2}, \, x_{1}) & k(x_{2}, \, x_{2}) & \cdots & k(x_{2}, \, x_{n}) \\
+   \vdots & \vdots & \ddots & \vdots \\
+   k(x_{n}, \, x_{1}) & k(x_{n}, \, x_{2}) & \cdots & k(x_{n}, \, x_{n})
+\end{bmatrix}\)
+
+The most common mean function is zero. This is because every Gaussian process can be recovered by adding a mean function to a Gaussian process with a mean of zero. This simplifies calculations involving GPs. 
+
+There are numerous covariance functions. The main classes of covariance functions are the white noise, squared exponential, Mat\'ern, periodic, and quasi-periodic kernels.
+
+The white noise kernel assumes that observations in a TSD are independent and have a constant error term. This is often not true for most TSDs.
+
+The squared exponential kernel is a natural way of describing the autocorrelation decay in a TSD. Points that are close in time are highly correlated, so the autocorrelation diminishes quickly; thus, points that are far away in time are weakly correlated.
+
+The Mat\'ern class of covariance functions are generalized squared exponential kernels. Additionally, these include functions that are (v + 1/2) times differentiable. As v turns to infinity, the Mat\'ern class of covariance functions converges to the squared exponential kernel. 
+
+The periodic and quasi-periodic kernels model periodicity in the autocorrelation of a TSD. Usually, we have a sine or cosine squared on the input of the squared exponential kernel. 
