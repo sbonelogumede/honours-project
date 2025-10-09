@@ -676,3 +676,431 @@ legend("topleft", legend = c("Simulated", "Posterior Mean (Drift+GP)"),
        col = c("darkgreen", "blue"), lwd = 2)
 
 ```
+
+ASSUMPTION THAT ERRORS \~N(0, sigma\^2)
+
+```{r}
+#--- Packages ---
+library(mvtnorm)
+library(ggplot2)
+
+#--- Define kernel ---
+sqdist <- function(x, xp) outer(x, xp, function(a,b) (a-b)^2)
+cov_exp_quad <- function(x, xp, alpha, rho) alpha^2 * exp(-0.5 * sqdist(x,xp)/rho^2)
+
+#--- Data setup ---
+y <- sim_df$Sim_Close
+x <- as.numeric(scale(1:length(y)))  # scaled time for numerical stability
+
+#--- Hyperparameters (rough guesses or estimates) ---
+alpha <- sd(y) * 0.5   # signal amplitude
+rho   <- 0.3           # smoothness
+sigma <- sd(y - mean(y)) * 0.2  # noise level
+
+#--- Compute GP posterior ---
+K_xx <- cov_exp_quad(x, x, alpha, rho)
+K_yy <- K_xx + diag(sigma^2, length(y))
+
+# Mean-centering the data
+y_centered <- y - mean(y)
+
+# Compute Cholesky for stability
+L <- chol(K_yy)
+alpha_vec <- backsolve(L, forwardsolve(t(L), y_centered))
+
+# Posterior mean and variance
+post_mu <- K_xx %*% alpha_vec
+V <- backsolve(L, t(K_xx))
+post_cov <- K_xx - t(V) %*% V
+post_sd <- sqrt(diag(post_cov))
+
+#--- Combine results ---
+gp_df <- data.frame(
+  Date = sim_df$Date,
+  y = y,
+  mu = post_mu + mean(y),
+  lo = post_mu + mean(y) - 2 * post_sd,
+  hi = post_mu + mean(y) + 2 * post_sd
+)
+
+#--- Plot GP posterior ---
+ggplot(gp_df, aes(x = Date)) +
+  geom_ribbon(aes(ymin = lo, ymax = hi), fill = "skyblue", alpha = 0.4) +
+  geom_line(aes(y = mu), color = "blue", size = 0.7) +
+  geom_line(aes(y = y), color = "darkgreen", alpha = 0.5) +
+  labs(
+    title = "Gaussian Process Fit to Simulated Gold-like Price Series",
+    subtitle = "Posterior mean (blue) with 95% credible band (shaded)",
+    x = "Date", y = "Price (USD)"
+  ) +
+  theme_minimal(base_size = 14)
+
+```
+
+```{r}
+gp_zoom <- subset(gp_df, Date >= as.Date("2014-01-01") & Date <= as.Date("2016-12-31"))
+
+ggplot(gp_zoom, aes(x = Date)) +
+  geom_ribbon(aes(ymin = lo, ymax = hi), fill = "skyblue", alpha = 0.4) +
+  geom_line(aes(y = mu), color = "blue", size = 0.7) +
+  geom_line(aes(y = y), color = "darkgreen", alpha = 0.5) +
+  labs(
+    title = "Gaussian Process Fit (Zoomed on 2014–2016)",
+    subtitle = "Posterior mean (blue) with 95% credible band (shaded)",
+    x = "Date", y = "Price (USD)"
+  ) +
+  theme_minimal(base_size = 14)
+
+
+```
+
+```{r}
+# ---- setup ----
+library(mvtnorm)
+library(ggplot2)
+
+y  <- sim_df$Sim_Close
+x0 <- 1:length(y)
+x  <- as.numeric(scale(x0))           # scale time to ~[-1,1] for stability
+n  <- length(y)
+
+sqdist <- function(x, xp) outer(x, xp, function(a,b) (a-b)^2)
+cov_exp_quad <- function(x, xp, alpha, rho) alpha^2 * exp(-0.5 * sqdist(x,xp)/rho^2)
+
+# ---- negative log marginal likelihood (NLML) ----
+neg_log_marglik <- function(par_log, x, y) {
+  alpha <- exp(par_log[1]); rho <- exp(par_log[2]); sigma <- exp(par_log[3])
+  K <- cov_exp_quad(x, x, alpha, rho) + diag(sigma^2 + 1e-10, length(x))
+  # mean-center (constant mean); you can replace with a trend if desired
+  y_c <- y - mean(y)
+  L   <- chol(K)
+  v   <- backsolve(L, y_c, transpose = TRUE)
+  0.5*sum(v^2) + sum(log(diag(L))) + 0.5*length(y)*log(2*pi)
+}
+
+# ---- multi-start optimization (to avoid bad local optima) ----
+set.seed(1)
+starts <- rbind(
+  log(c(sd(y)*0.3,  0.20, sd(y)*0.2)),
+  log(c(sd(y)*0.7,  0.40, sd(y)*0.3)),
+  log(c(sd(y)*1.2,  0.80, sd(y)*0.5)),
+  replicate(3, log(c(runif(1, 0.1, 2)*sd(y), runif(1, 0.05, 1.5), runif(1, 0.05, 1.5)*sd(y))), simplify=TRUE)
+)
+
+opts <- apply(starts, 2, function(s0)
+  optim(s0, neg_log_marglik, x = x, y = y,
+        method = "L-BFGS-B",
+        lower = log(c(1e-6, 1e-4, 1e-6)),
+        upper = log(c(1e6,  5.0,  1e6)))
+)
+
+best <- opts[[ which.min(sapply(opts, `[[`, "value")) ]]
+theta_hat <- setNames(exp(best$par), c("alpha","rho","sigma"))
+theta_hat
+
+```
+
+```{r}
+# ---- posterior with estimated hyper-parameters ----
+alpha_hat <- theta_hat["alpha"]; rho_hat <- theta_hat["rho"]; sigma_hat <- theta_hat["sigma"]
+
+Kxx <- cov_exp_quad(x, x, alpha_hat, rho_hat)
+Kyy <- Kxx + diag(sigma_hat^2 + 1e-10, n)
+
+y_c <- y - mean(y)
+L   <- chol(Kyy)
+a   <- backsolve(L, forwardsolve(t(L), y_c))
+
+post_mu  <- Kxx %*% a
+V        <- backsolve(L, t(Kxx))
+post_cov <- Kxx - t(V) %*% V
+post_sd  <- sqrt(pmax(0, diag(post_cov)))   # guard tiny negatives
+
+gp_fit <- data.frame(
+  Date = sim_df$Date,
+  y    = y,
+  mu   = as.numeric(post_mu + mean(y)),
+  lo   = as.numeric(post_mu + mean(y) - 1.96*post_sd),
+  hi   = as.numeric(post_mu + mean(y) + 1.96*post_sd)
+)
+
+# ---- plot: GP fit with learned hyper-parameters ----
+ggplot(gp_fit, aes(Date)) +
+  geom_ribbon(aes(ymin = lo, ymax = hi), fill = "skyblue", alpha = 0.8) +
+  geom_line(aes(y = mu), color = "royalblue", linewidth = 0.6) +
+  geom_line(aes(y = y), color = "darkgreen", alpha = 0.35) +
+  labs(
+    title = "GP Fit to Simulated Gold-like Series (Hyper-parameters Learned by Marginal Likelihood)",
+    subtitle = paste0("alpha=", round(alpha_hat,2),
+                      ", rho=", round(rho_hat,3),
+                      ", sigma=", round(sigma_hat,2)),
+    x = "Date", y = "Price (USD)"
+  ) +
+  theme_minimal(base_size = 14)
+
+```
+
+```{r}
+# ---- subset for zoom (e.g., 2014–2016) ----
+gp_zoom <- subset(gp_fit, Date >= as.Date("2014-01-01") & Date <= as.Date("2016-12-31"))
+
+# ---- plot zoomed GP fit ----
+ggplot(gp_zoom, aes(Date)) +
+  geom_ribbon(aes(ymin = lo, ymax = hi), fill = "skyblue", alpha = 0.6) +
+  geom_line(aes(y = mu), color = "royalblue", linewidth = 0.6) +
+  geom_line(aes(y = y), color = "darkgreen", alpha = 0.4) +
+  labs(
+    title = "Zoomed GP Fit to Simulated Gold-like Series (2014–2016)",
+    subtitle = paste0("α = ", round(alpha_hat,2),
+                      ", ρ = ", round(rho_hat,3),
+                      ", σ = ", round(sigma_hat,2)),
+    x = "Date", y = "Price (USD)"
+  ) +
+  theme_minimal(base_size = 15)
+```
+
+something to think about :) ![](images/clipboard-798855471.png)
+
+\
+\
+
+```{r}
+library(ggplot2)
+
+#------------------------
+# 1) Train / Test split
+#------------------------
+y_all <- sim_df$Sim_Close
+dates <- sim_df$Date
+n <- length(y_all); h <- 30
+idx_tr <- 1:(n - h); idx_te <- (n-h+1):n
+y_tr <- y_all[idx_tr]; y_te <- y_all[idx_te]
+d_tr <- dates[idx_tr]; d_te <- dates[idx_te]
+
+#------------------------
+# 2) Helpers
+#------------------------
+rmse <- function(e) sqrt(mean(e^2))
+mae  <- function(e) mean(abs(e))
+mape <- function(y, yhat) mean(abs((y - yhat)/y)) * 100
+
+eval_metrics <- function(y_true, y_hat) {
+  e <- y_true - y_hat
+  data.frame(IRMSE = rmse(e), IMAE = mae(e), IMPE = mape(y_true, y_hat))
+}
+
+#------------------------
+# 3) Baseline forecasts
+#------------------------
+
+# Mean: constant = mean(train)
+f_mean <- rep(mean(y_tr), h)
+
+# Naive: last observed
+f_naive <- rep(tail(y_tr, 1), h)
+
+# Seasonal naive (m = 7 day-of-week seasonality; adjust m if needed)
+m <- 7
+last_season <- tail(y_tr, m)
+# repeat last_season to length h, aligned
+f_snaive <- rep(last_season, length.out = h)
+
+# Drift: line between first and last, extrapolate
+y1 <- y_tr[1]; yT <- tail(y_tr, 1); Tn <- length(y_tr)
+drift_step <- (yT - y1) / (Tn - 1)
+f_drift <- yT + drift_step * (1:h)
+
+# AR(1): ARIMA(1,0,0)
+fit_ar1 <- arima(y_tr, order = c(1,0,0), include.mean = TRUE)
+f_ar1 <- as.numeric(predict(fit_ar1, n.ahead = h)$pred)
+
+#------------------------
+# 4) GP forecast (RBF kernel, hyperparams by ML on train only)
+#------------------------
+sqdist <- function(x, xp) outer(x, xp, function(a,b) (a-b)^2)
+cov_exp_quad <- function(x, xp, alpha, rho) alpha^2 * exp(-0.5 * sqdist(x,xp)/rho^2)
+
+x_tr0 <- 1:length(y_tr)
+x_te0 <- (length(y_tr)+1):(length(y_tr)+h)
+# scale to ~[-1,1] for stability
+scale01 <- function(z){ (z - mean(x_tr0)) / sd(x_tr0) }
+x_tr <- scale01(x_tr0)
+x_te <- scale01(x_te0)
+
+neg_log_marglik <- function(par_log, x, y) {
+  alpha <- exp(par_log[1]); rho <- exp(par_log[2]); sigma <- exp(par_log[3])
+  K <- cov_exp_quad(x, x, alpha, rho) + diag(sigma^2 + 1e-10, length(x))
+  y_c <- y - mean(y)
+  L <- chol(K)
+  v <- backsolve(L, y_c, transpose = TRUE)
+  0.5*sum(v^2) + sum(log(diag(L))) + 0.5*length(y)*log(2*pi)
+}
+
+# multi-start to reduce local minima risk
+set.seed(123)
+starts <- rbind(
+  log(c(sd(y_tr)*0.3, 0.2, sd(y_tr)*0.3)),
+  log(c(sd(y_tr)*1.0, 0.6, sd(y_tr)*0.5)),
+  log(c(sd(y_tr)*2.0, 1.0, sd(y_tr)*0.8))
+)
+opts <- apply(starts, 1, function(s0)
+  optim(s0, neg_log_marglik, x = x_tr, y = y_tr, method = "L-BFGS-B",
+        lower = log(c(1e-6, 1e-4, 1e-6)),
+        upper = log(c(1e6,  5.0,  1e6))))
+best <- opts[[ which.min(sapply(opts, `[[`, "value")) ]]
+theta_hat <- setNames(exp(best$par), c("alpha","rho","sigma"))
+
+alpha_hat <- theta_hat["alpha"]; rho_hat <- theta_hat["rho"]; sigma_hat <- theta_hat["sigma"]
+
+# GP predictive mean for future x_te (posterior predictive mean)
+Koo <- cov_exp_quad(x_tr, x_tr, alpha_hat, rho_hat) + diag(sigma_hat^2 + 1e-10, length(x_tr))
+Kto <- cov_exp_quad(x_te, x_tr, alpha_hat, rho_hat)
+L   <- chol(Koo)
+a   <- backsolve(L, forwardsolve(t(L), y_tr - mean(y_tr)))
+mu_te <- as.numeric(Kto %*% a + mean(y_tr))
+
+# (If you also want predictive intervals, add sigma^2, but table uses point forecasts)
+
+#------------------------
+# 5) Metric table (IRMSE/IMAE/IMPE on 30-day holdout)
+#------------------------
+tab <- rbind(
+  Mean           = eval_metrics(y_te, f_mean),
+  Naive          = eval_metrics(y_te, f_naive),
+  SeasonalNaive  = eval_metrics(y_te, f_snaive),
+  Drift          = eval_metrics(y_te, f_drift),
+  AR1            = eval_metrics(y_te, f_ar1),
+  GP_RBF         = eval_metrics(y_te, mu_te)   
+)
+
+round(tab, 3)
+
+```
+
+maybe a composite kernel (Linear + Weekly Periodic + Matérn-3/2)
+
+```{r}
+# ---- helpers (add to your GP section) ----
+sqdist  <- function(x, xp) outer(x, xp, function(a,b) (a-b)^2)
+absdist <- function(x, xp) abs(outer(x, xp, "-"))
+
+# Linear kernel: k(x,x') = (c + s*(x-cx))*(c + s*(x'-cx))  ~ allows linear trend extrapolation
+cov_linear <- function(x, xp, bias, slope, cx) {
+  xv  <- (x - cx); xpv <- (xp - cx)
+  (bias + slope * xv) %o% (bias + slope * xpv)
+}
+
+# Weekly periodic kernel (period P): k = a^2 * exp(-2 sin^2(pi|x-x'|/P) / l^2)
+cov_periodic <- function(x, xp, amp, ell, period) {
+  r <- absdist(x, xp)
+  amp^2 * exp( -2 * (sin(pi * r / period)^2) / (ell^2) )
+}
+
+# Matérn 3/2 (rough local structure)
+cov_matern32 <- function(x, xp, alpha, rho) {
+  r <- absdist(x, xp); a <- sqrt(3) * r / rho
+  alpha^2 * (1 + a) * exp(-a)
+}
+
+# Sum kernel: Linear + Periodic(weekly) + Matérn32
+cov_sum <- function(x, xp, par) {
+  with(as.list(par), {
+    cov_linear(x, xp, bias_lin, slope_lin, cx) +
+    cov_periodic(x, xp, amp_per, ell_per, period) +
+    cov_matern32(x, xp, alpha_m32, rho_m32)
+  })
+}
+
+# Negative log marginal likelihood for composite kernel
+nlml_sum <- function(p_log, x, y, period = 7) {
+  p <- exp(p_log)
+  names(p) <- c("bias_lin","slope_lin","amp_per","ell_per","alpha_m32","rho_m32","sigma")
+  p <- within(as.list(p), { cx <- 0; period <- period })
+  K <- cov_sum(x, x, p) + diag(p$sigma^2 + 1e-10, length(x))
+  y_c <- y - mean(y)
+  L <- chol(K)
+  v <- backsolve(L, y_c, transpose = TRUE)
+  0.5*sum(v^2) + sum(log(diag(L))) + 0.5*length(y)*log(2*pi)
+}
+
+gp_forecast_sum <- function(x_tr, y_tr, x_te, period = 7) {
+  set.seed(42)
+  init <- rbind(
+    log(c(  1,  1e-2,  sd(y_tr)*0.3, 0.5, sd(y_tr)*0.8, 0.5, sd(y_tr)*0.3)),
+    log(c( 10,  1e-3,  sd(y_tr)*0.6, 1.0, sd(y_tr)*1.2, 1.0, sd(y_tr)*0.6)),
+    log(c(  3,  1e-2,  sd(y_tr)*1.0, 0.3, sd(y_tr)*0.5, 2.0, sd(y_tr)*0.4))
+  )
+  opts <- apply(init, 1, function(s0)
+    optim(s0, nlml_sum, x = x_tr, y = y_tr, period = period,
+          method="L-BFGS-B",
+          lower = log(c(1e-6,1e-6,1e-6,1e-3,1e-6,1e-3,1e-6)),
+          upper = log(c(1e+6,1e+2,1e+6, 5.0,1e+6, 5.0,1e+6))))
+  best <- opts[[ which.min(sapply(opts, `[[`, "value")) ]]
+  p <- exp(best$par); names(p) <- c("bias_lin","slope_lin","amp_per","ell_per","alpha_m32","rho_m32","sigma")
+  p <- within(as.list(p), { cx <- 0; period <- period })
+
+  Koo <- cov_sum(x_tr, x_tr, p) + diag(p$sigma^2 + 1e-10, length(x_tr))
+  Kot <- cov_sum(x_te, x_tr, p)
+  L <- chol(Koo)
+  a <- backsolve(L, forwardsolve(t(L), y_tr - mean(y_tr)))
+  mu_te <- as.numeric(Kot %*% a + mean(y_tr))
+  list(mean = mu_te, par = p)
+}
+
+```
+
+```{r}
+# scale time as before
+x_tr0 <- 1:length(y_tr)
+x_te0 <- (length(y_tr)+1):(length(y_tr)+h)
+scale01 <- function(z){ (z - mean(x_tr0)) / sd(x_tr0) }
+x_tr <- scale01(x_tr0)
+x_te <- scale01(x_te0)
+
+
+# Composite (Linear + Weekly Periodic + Matérn32)
+gp_combo <- gp_forecast_sum(x_tr, y_tr, x_te, period = 7)
+
+f_gp_rbf   <- gp_rbf$mean
+f_gp_m32   <- gp_m32$mean
+f_gp_combo <- gp_combo$mean
+
+```
+
+```{r}
+tab <- rbind(
+  Mean           = eval_metrics(y_te, f_mean),
+  Naive          = eval_metrics(y_te, f_naive),
+  SeasonalNaive  = eval_metrics(y_te, f_snaive),
+  Drift          = eval_metrics(y_te, f_drift),
+  AR1            = eval_metrics(y_te, f_ar1),
+  GP_RBF         = eval_metrics(y_te, f_gp_rbf),
+  GP_Matern32    = eval_metrics(y_te, f_gp_m32),
+  GP_Combo       = eval_metrics(y_te, f_gp_combo)
+)
+round(tab, 3)
+```
+
+```{r}
+plot_df <- data.frame(
+  Date = d_te,
+  Actual = y_te,
+  Mean = f_mean, Naive = f_naive, SNaive = f_snaive, Drift = f_drift, AR1 = f_ar1,
+  GP_RBF = f_gp_rbf, GP_Matern = f_gp_m32, GP_Combo = f_gp_combo
+) |>
+  tidyr::pivot_longer(-c(Date, Actual), names_to="Model", values_to="Forecast")
+
+ggplot(plot_df, aes(Date)) +
+  geom_line(aes(y = Actual), color="black", linewidth=1.2) +
+  geom_line(aes(y = Forecast, color = Model), linewidth=0.9, alpha=0.9) +
+  scale_color_manual(values = c(
+    Mean="gray40", Naive="orange", SNaive="pink", Drift="darkviolet",
+    AR1="maroon", GP_RBF="blue", GP_Matern="green4", GP_Combo="red3"
+  )) +
+  labs(title="30-Day Forecasts (All Models)",
+       subtitle="GP_Combo = Linear + Weekly Periodic + Matérn-3/2 kernel",
+       y="Simulated Price (USD)", x="Date") +
+  theme_minimal(base_size=14) +
+  theme(legend.position="bottom")
+
+```
