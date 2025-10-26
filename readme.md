@@ -1,3 +1,5 @@
+# Gaussian Processes for Time Series Modelling
+
 ## Institution
 
 The University of Cape Town
@@ -22,24 +24,40 @@ Professor Birgit Erni
 
 There are many ways to model the autocorrelation structure in time series data. Capturing the correlation structure through a Gaussian Process is a non-parametric approach which is very flexible and a good approach for capturing uncertainties. For this project we use Gaussian processes for modelling time series data, simulate from Gaussian processes, reproduce existing model fits to data, and then model a local data set using Gaussian processes.
 
-## Datasets
+We apply GPs on air pollution forecasting and gold price modelling.
 
-https://odp-cctegis.opendata.arcgis.com/
+## Project Structure
 
-- 2019_NO2_CCT.xls
-- 2019_O3_CCT.xls
-- 2019_PM10_CCT.xls
-- 2019_SO2_CCT.xls
-- 2020_NO2_CCT.xls
-- 2020_O3_CCT.xls
-- 2020_PM10_CCT.xls
-- 2020_SO2_CCT.xls
-- Wind_direction_and_speed_2019.xlsx
-- Wind_direction_and_speed_2020.xlsx
+```
+honours-project/
+├── air-quality-forecasting/    # Air pollution forecasting using GP models
+│
+├── gold/                       # Gold price modelling using GP models
+│
+├── .gitignore                  # Git ignore rules for repository
+└── README.md                   # This file
+```
 
-## Tutorial
+## Getting Started
 
-- https://betanalpha.github.io/assets/case_studies/gaussian_processes.html
-- https://www.niamhcahill.com/post/gp_tutorial/
-- https://mc-stan.org/rstan/articles/rstan.html
-- https://mc-stan.org/docs/stan-users-guide/gaussian-processes.html
+Each project directory contains its own README with specific instructions for:
+
+- Data requirements
+- Package installation
+- Running the analysis
+- Interpreting results
+
+Navigate to the respective project directory for detailed documentation:
+
+- [Air Quality Forecasting](air-quality-forecasting/README.md)
+- [Gold Price Modelling](gold/README.md)
+
+## Requirements
+
+- R >= 4.0.0
+- Required packages are listed in each project's README
+- HPC access recommended for computationally intensive GP models
+
+## License
+
+University of Cape Town - Academic Use

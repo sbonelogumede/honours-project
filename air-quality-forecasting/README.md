@@ -6,7 +6,7 @@ Time series analysis and forecasting of NO₂ concentrations using air quality a
 
 ```
 project/
-├── raw_data/                          # Raw data files (not included in repo)
+├── raw_data/                          # Raw data files
 │   ├── 2019_NO2_CCT.xls
 │   ├── 2019_PM10_CCT.xls
 │   ├── 2019_SO2_CCT.xls
@@ -26,12 +26,19 @@ project/
 │   ├── figures/                       # Generated plots
 │   └── results/                       # Model evaluation results
 │
+├── hpc/                               # HPC job scripts
+│   └── install_packages.sh            # Package installation job script
+│
+├── install_packages.R                 # Package installation script
 ├── 01_extract_data.R                  # Data extraction from Excel files
 ├── 02_preprocess_explore.R            # Data preprocessing and EDA
 ├── 03_transform_data.R                # Data transformation for modeling
 ├── 04_simple_forecasting.R            # Baseline forecasting models
 ├── 05_sarima_models.R                 # SARIMA model evaluation
-├── run_analysis.R                     # Master script to run full pipeline
+├── 06_comprehensive_diagnostics.R     # Model diagnostics
+├── 07_extract_components.R            # Component extraction
+├── 08_GP_MLR_CV.R                     # GP & MLR models (run separately on HPC)
+├── run_analysis.R                     # Master script (runs steps 1-5)
 └── README.md                          # This file
 ```
 
@@ -43,18 +50,35 @@ project/
 
 ### Required Packages
 
-```r
-install.packages(c(
-  "dplyr",
-  "forecast",
-  "GGally",
-  "ggplot2",
-  "ggcorrplot",
-  "lubridate",
-  "parallel",
-  "readxl",
-  "tidyr"
-))
+All required packages are installed automatically using `install_packages.R`.
+
+## Setup
+
+### Step 0: Install Packages
+
+**First time setup:**
+
+```bash
+Rscript install_packages.R
+```
+
+This will install:
+- Data manipulation: dplyr, tidyr, lubridate, readxl
+- Time series: forecast
+- Visualization: ggplot2, GGally, ggcorrplot, qqconf
+- Parallel computing: parallel
+- Bayesian modeling: cmdstanr (via remotes)
+
+**For HPC users (optional):**
+
+```bash
+sbatch hpc/install_packages.sh
+```
+
+Check installation status:
+```bash
+cat install_packages.out
+cat install_packages.err
 ```
 
 ## Usage
@@ -66,6 +90,8 @@ To run the entire analysis pipeline:
 ```r
 source("run_analysis.R")
 ```
+
+This runs steps 1-5 (data extraction through SARIMA models).
 
 ### Run Individual Steps
 
@@ -86,9 +112,24 @@ source("04_simple_forecasting.R")
 
 # Step 5: SARIMA models
 source("05_sarima_models.R")
+
+# Step 6: Model diagnostics
+source("06_comprehensive_diagnostics.R")
+
+# Step 7: Extract components
+source("07_extract_components.R")
+
+# Step 8: GP & MLR models (run separately, requires HPC)
+source("08_GP_MLR_CV.R")
 ```
 
 ## Analysis Pipeline
+
+### 0. Package Installation (`install_packages.R`)
+
+- Configures user library path
+- Installs all required dependencies
+- Sets up CmdStanR for Bayesian modeling
 
 ### 1. Data Extraction (`01_extract_data.R`)
 
@@ -129,6 +170,27 @@ Evaluates seasonal ARIMA models:
 - SARIMA(2,0,0)(1,0,0)[24]
 - SARIMA(1,0,1)(1,0,0)[24]
 
+### 6. Comprehensive Diagnostics (`06_comprehensive_diagnostics.R`)
+
+- Residual analysis (ACF, PACF, Ljung-Box tests)
+- Normality tests
+- Heteroscedasticity checks
+- Diagnostic plots
+
+### 7. Component Extraction (`07_extract_components.R`)
+
+- Decomposes time series into trend, seasonal, and irregular components
+- Analyzes component characteristics
+- Visualizes decomposition
+
+### 8. GP & MLR with Cross-Validation (`08_GP_MLR_CV.R`)
+
+**Note: Run separately on HPC due to computational requirements**
+
+- Fits Gaussian Process regression models
+- Multiple Linear Regression with cross-validation
+- Model comparison and validation
+
 ## Evaluation Metrics
 
 All models are evaluated using:
@@ -145,6 +207,8 @@ All models are evaluated using:
 - Weekday vs weekend comparison boxplots
 - ACF and PACF plots
 - Pairs plots showing correlations
+- Model diagnostic plots
+- Component decomposition visualizations
 
 ### Results
 
@@ -161,13 +225,42 @@ The analysis uses hourly air quality data from Cape Town, 2019:
 - **SO₂**: Sulfur dioxide concentration (μg/m³)
 - **Wind Speed**: Meteorological wind speed (m/s)
 
+## HPC Usage
+
+The Gaussian Process models (step 8) are computationally intensive and should be run on HPC:
+
+```bash
+# Submit GP modeling job
+sbatch hpc/run_gp_models.sh
+```
+
+All other steps can be run locally.
+
 ## Notes
 
 - Missing values are handled using `na.omit()` for modeling
 - Time series have hourly frequency (24 observations per day)
 - Cross-validation uses a rolling origin approach with 1-day forecast horizon
 - All functions are documented with roxygen-style comments
+- Package installation must be completed before running any analysis scripts
+- `run_analysis.R` executes steps 1-5 only; steps 6-8 are run separately
+
+## Troubleshooting
+
+If scripts report missing packages:
+
+```bash
+Rscript install_packages.R
+```
+
+For CmdStan installation issues:
+
+```r
+library(cmdstanr)
+install_cmdstan()
+cmdstan_version()
+```
 
 ## Author
 
-[Sbonelo Gumede]
+Sbonelo Gumede
