@@ -1,26 +1,31 @@
-# Gaussian Process Forecasting for Gold Prices
+# Gaussian Processes for Time Series Modelling
 
-This repository contains the full implementation and supporting documentation for the financial application component of the *Honours Thesis on Gaussian Process Regression and Uncertainty Quantification*.  
-The study focuses on forecasting **daily Gold ETF prices** using various **Gaussian Process (GP)** models and comparing their performance to traditional time-series benchmarks.
+## Institution
+The University of Cape Town
+
+## Project
+Honours Minor Dissertation
+
+## Topic
+Gaussian Processes for Time Series Modelling
+
+## Authors
+Raphaela Azah and Sbonelo Gumede
+
+## Supervisor
+Professor Birgit Erni
 
 ---
 
-## 🧠 Project Overview
-
-The goal of this project is to evaluate and enhance the predictive capability of Gaussian Process regression in a financial context.  
-Three GP-based approaches were developed and compared against standard benchmark forecasting models:
-
-1. **GP-Single:** Baseline model trained on the full dataset.  
-2. **Bootstrap Ensemble GP:** Ensemble of GPs trained on bootstrapped samples to improve robustness and uncertainty calibration.  
-3. **Cross-Validation (CV) Ensemble GP:** Aggregation of GPs trained on cross-validation folds.
-
-Each model was assessed on **daily gold price data (2011–2019)** using multiple error metrics (RMSE, MAE, MAPE) and visual diagnostics.  
-Benchmark comparisons include Mean, Naïve, Seasonal Naïve, Drift, and AR(1) models.
+## Abstract
+This repository contains the code, data, and documentation supporting the Honours Minor Dissertation titled *"Gaussian Processes for Time Series Modelling"*.  
+The project explores the application of Gaussian Process (GP) regression methods to financial time series, specifically for forecasting gold price movements.  
+Several GP-based models are implemented and compared — including single-fit, cross-validation ensemble, and bootstrap ensemble approaches — against benchmark statistical models.  
+The repository provides reproducible analysis pipelines written in **R and Quarto (QMD)**, along with supporting datasets, kernel optimization scripts, and simulation experiments.
 
 ---
 
 ## 📂 Repository Structure
-
 gold/
 │
 ├── code/
@@ -61,3 +66,49 @@ gold/
 │
 └── docs/
 └── ABOUT_DATA_(gold).docx
+
+---
+##  Figures and Outputs
+
+All generated figures (diagnostics, forecasts, kernel behavior, etc.) are saved in the `/code/output` directory, including:
+- Residual plots and Q–Q analysis  
+- Forecast comparisons and uncertainty bands  
+- Individual ensemble model predictions  
+- Volatility and ACF/PACF analyses
+
+---
+
+##  Data
+
+**Source:** Gold ETF prices and macroeconomic variables (2011–2019).  
+Data were collected from Yahoo Finance and various macroeconomic data repositories.  
+For detailed feature descriptions, refer to:  
+📄 `docs/ABOUT DATA (gold).docx`
+
+---
+## ⚙️ Requirements
+- R (≥ 4.2.0)
+- Quarto (≥ 1.3.0)
+- Key R packages:  
+  `tidyverse`, `kernlab`, `GPfit`, `ggplot2`, `dplyr`, `forecast`, `caret`, `readr`
+---
+
+##  Running the Project
+
+1. Clone this repository:
+   ```bash
+   git clone https://github.com/<your-username>/honours-project.git
+   
+   
+   
+   
+Results Summary
+The Bootstrap Ensemble GP model achieved the best predictive performance across metrics (RMSE, MAE, MAPE), outperforming both benchmark and single GP approaches.
+Residual diagnostics indicated homoskedasticity and well-calibrated uncertainty, supporting the robustness of the ensemble GP framework for financial forecasting.
+
+
+
+Citation
+If you use this repository, please cite:
+
+Azah, R., & Gumede, S. (2025). Gaussian Processes for Time Series Modelling. Honours Minor Dissertation, University of Cape Town.

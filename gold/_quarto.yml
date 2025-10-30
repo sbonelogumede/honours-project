@@ -1,0 +1,87 @@
+# =========================================================
+# _quarto.yml
+# Configuration for Gaussian Processes for Time Series Modelling
+# =========================================================
+
+project:
+  type: book
+  output-dir: _output
+
+book:
+  title: "Gaussian Processes for Time Series Modelling"
+  author:
+    - name: "Raphaela Azah"
+    - name: "Sbonelo Gumede"
+  date: "2025"
+  chapters:
+    - index.qmd
+    - code/EDA/EDA_1.qmd
+    - code/EDA/EDA_2.qmd
+    - code/Kernels/Kernels.qmd
+    - code/Kernels/kernel_optimization_methodology.qmd
+    - code/Configuration_optimisation.qmd
+    - code/GP_Approaches/Approach1_GP_single.qmd
+    - code/GP_Approaches/Approach2_GP_Boot.qmd
+    - code/GP_Approaches/Approach3_GP_CV.qmd
+    - code/benchmark_models.qmd
+    - code/Simulations/generic_simulation.qmd
+    - code/Simulations/Sine_Simulation.qmd
+    - conclusion.qmd
+
+# =========================================================
+# FRONT MATTER METADATA
+# =========================================================
+
+metadata:
+  title: "Gaussian Processes for Time Series Modelling"
+  subtitle: "Honours Minor Dissertation"
+  author: ["Raphaela Azah", "Sbonelo Gumede"]
+  supervisor: "Professor Birgit Erni"
+  affiliation: "University of Cape Town"
+  date: "2025"
+
+# =========================================================
+# RENDERING SETTINGS
+# =========================================================
+
+format:
+  html:
+    theme: cosmo
+    code-fold: true
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    smooth-scroll: true
+    df-print: paged
+  pdf:
+    documentclass: report
+    toc: true
+    number-sections: true
+    fig-pos: 'H'
+    keep-tex: true
+
+# =========================================================
+# EXECUTION OPTIONS
+# =========================================================
+
+execute:
+  echo: true
+  warning: false
+  message: false
+  cache: true
+  freeze: auto
+
+# =========================================================
+# REFERENCES AND STYLE
+# =========================================================
+
+lang: en
+bibliography: references.bib
+csl: apa.csl
+
+# =========================================================
+# EDITOR AND ENVIRONMENT
+# =========================================================
+
+editor: visual
+
