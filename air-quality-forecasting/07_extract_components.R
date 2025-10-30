@@ -1,347 +1,250 @@
 # ==============================================================================
-# Extract and Visualize GP Components
-# Purpose: Decompose GP predictions into trend and seasonal components
+# Extract and Visualize GP Components - SIMPLE VERSION
+# Purpose: Create 3 plots showing component decomposition for fold 1
+#          - Plot 1: SE Model (MLR_SE + SE + WN)
+#          - Plot 2: PER Model (MLR_PER + PER + WN)
+#          - Plot 3: SExPER Model (MLR_SExPER + SExPER + WN)
 # ==============================================================================
 
 suppressPackageStartupMessages({
   library(ggplot2)
-  library(tidyr)
   library(dplyr)
   library(posterior)
 })
-
-cat("Starting component extraction...\n")
 
 # Configuration ----------------------------------------------------------------
 data_dir <- "data"
 results_dir <- "output/results"
 fig_dir <- "output/figures"
 
-# Ensure output directories exist
 if (!dir.exists(fig_dir)) {
   dir.create(fig_dir, recursive = TRUE)
 }
 
-# -----------------------------------------------------------------------------
-# Load Data
-# -----------------------------------------------------------------------------
-
+# Load Data --------------------------------------------------------------------
 cat("Loading data...\n")
 load(file.path(data_dir, "transformed_data.RData"))
 
-# -----------------------------------------------------------------------------
-# Function to Extract Components - Memory Efficient
-# -----------------------------------------------------------------------------
+# Extract components for fold 1 -----------------------------------------------
+fold_idx <- 1
 
-extract_components_efficient <- function(fold_idx = 1) {
-  
-  cat(sprintf("Processing fold %d...\n", fold_idx))
-  
-  # Get fold data
-  X2_fold <- window(
-    x = X_mat, 
-    start = start(X2) + c(fold_idx-1, 0), 
-    end = end(X2) + c(fold_idx-1, 0)
-  )
-  Y2_fold <- window(
-    x = Y_vec, 
-    start = start(Y2) + c(fold_idx-1, 0), 
-    end = end(Y2) + c(fold_idx-1, 0)
-  )
-  
-  # Load and process SE kernel (trend)
-  load(file.path(results_dir, "GP_MLR_SE_IR.RData"))
-  draws_se <- SE_draws[[fold_idx]]
-  
-  # Get all variable names and filter for gp_component
-  all_vars <- variables(draws_se)
-  gp_vars <- all_vars[grepl("^gp_component\\[", all_vars)]
-  beta_vars <- all_vars[grepl("^beta\\[", all_vars)]
-  
-  gp_se <- subset_draws(draws_se, variable = gp_vars)
-  gp_se_mean <- colMeans(as_draws_matrix(gp_se))
-  
-  beta_se <- subset_draws(draws_se, variable = beta_vars)
-  beta_se_mean <- colMeans(as_draws_matrix(beta_se))
-  linear_se <- as.matrix(X2_fold) %*% beta_se_mean
-  
-  rm(SE_draws, draws_se, gp_se, beta_se)
-  gc()
-  
-  # Load and process Periodic kernel (seasonal)
-  load(file.path(results_dir, "GP_MLR_PER_IR.RData"))
-  draws_per <- PER_draws[[fold_idx]]
-  
-  all_vars <- variables(draws_per)
-  gp_vars <- all_vars[grepl("^gp_component\\[", all_vars)]
-  beta_vars <- all_vars[grepl("^beta\\[", all_vars)]
-  
-  gp_per <- subset_draws(draws_per, variable = gp_vars)
-  gp_per_mean <- colMeans(as_draws_matrix(gp_per))
-  
-  beta_per <- subset_draws(draws_per, variable = beta_vars)
-  beta_per_mean <- colMeans(as_draws_matrix(beta_per))
-  linear_per <- as.matrix(X2_fold) %*% beta_per_mean
-  
-  rm(PER_draws, draws_per, gp_per, beta_per)
-  gc()
-  
-  # Load and process Product kernel
-  load(file.path(results_dir, "GP_MLR_SExPER_IR.RData"))
-  draws_product <- SExPER_draws[[fold_idx]]
-  
-  all_vars <- variables(draws_product)
-  y2_vars <- all_vars[grepl("^y2\\[", all_vars)]
-  
-  y2_product <- subset_draws(draws_product, variable = y2_vars)
-  y2_product_mean <- colMeans(as_draws_matrix(y2_product))
-  y2_lower <- apply(as_draws_matrix(y2_product), 2, quantile, probs = 0.025)
-  y2_upper <- apply(as_draws_matrix(y2_product), 2, quantile, probs = 0.975)
-  
-  rm(SExPER_draws, draws_product, y2_product)
-  gc()
-  
-  # Create result data frame
-  time_idx <- time(Y2_fold)
-  
-  df <- data.frame(
-    time = time_idx,
-    observations = as.numeric(Y2_fold),
-    trend_effect = gp_se_mean,
-    trend_linear = as.numeric(linear_se),
-    trend_total = as.numeric(linear_se) + gp_se_mean,
-    seasonal_effect = gp_per_mean,
-    seasonal_linear = as.numeric(linear_per),
-    seasonal_total = as.numeric(linear_per) + gp_per_mean,
-    prediction = y2_product_mean,
-    pred_lower = y2_lower,
-    pred_upper = y2_upper
-  )
-  
-  return(df)
-}
+# Get fold data
+X2_fold <- window(
+  x = X_mat, 
+  start = start(X2) + c(fold_idx-1, 0), 
+  end = end(X2) + c(fold_idx-1, 0)
+)
+Y2_fold <- window(
+  x = Y_vec, 
+  start = start(Y2) + c(fold_idx-1, 0), 
+  end = end(Y2) + c(fold_idx-1, 0)
+)
 
-# -----------------------------------------------------------------------------
-# Create Decomposition Plots - Process ONE fold at a time
-# -----------------------------------------------------------------------------
+time_idx <- time(Y2_fold)
+observations <- as.numeric(Y2_fold)
 
-cat("\n=== Creating Component Decomposition Plots ===\n\n")
+# Extract SE Model Components --------------------------------------------------
+cat("Extracting SE model components...\n")
+load(file.path(results_dir, "GP_MLR_SE_IR.RData"))
+draws_se <- SE_draws[[fold_idx]]
 
-fold_to_plot <- 1
-df_components <- extract_components_efficient(fold_idx = fold_to_plot)
+# Get GP component (SE kernel)
+gp_vars <- variables(draws_se)[grepl("^gp_component\\[", variables(draws_se))]
+gp_se <- colMeans(as_draws_matrix(subset_draws(draws_se, variable = gp_vars)))
 
-# Plot 1: Observations with Trend and Seasonal Overlaid
-p1 <- ggplot(df_components, aes(x = time)) +
-  # Observations
-  geom_line(aes(y = observations, color = "Observations"), 
-            linewidth = 0.5, alpha = 0.6) +
-  # Trend (from SE kernel)
-  geom_line(aes(y = trend_total, color = "Trend (SE)"), 
-            linewidth = 1) +
-  # Seasonal (from Periodic kernel)
-  geom_line(aes(y = seasonal_effect, color = "Seasonal (Periodic)"), 
-            linewidth = 0.8, linetype = "dashed") +
-  # Combined prediction
-  geom_line(aes(y = prediction, color = "Combined (SE×PER)"), 
-            linewidth = 1.2) +
-  scale_color_manual(
-    values = c(
-      "Observations" = "gray40",
-      "Trend (SE)" = "#E41A1C",
-      "Seasonal (Periodic)" = "#377EB8",
-      "Combined (SE×PER)" = "#4DAF4A"
-    )
-  ) +
-  labs(
-    title = sprintf("GP Decomposition - Fold %d", fold_to_plot),
-    subtitle = "Trend (SE kernel) + Seasonal (Periodic kernel) + Observations",
-    x = "Time",
-    y = "Value (standardized)",
-    color = "Component"
-  ) +
-  theme_minimal(base_size = 12) +
-  theme(legend.position = "bottom")
+# Get beta and compute MLR
+beta_vars <- variables(draws_se)[grepl("^beta\\[", variables(draws_se))]
+beta_se <- colMeans(as_draws_matrix(subset_draws(draws_se, variable = beta_vars)))
+mlr_se <- as.numeric(as.matrix(X2_fold) %*% beta_se)
 
-ggsave(file.path(fig_dir, "decomposition_overlay.pdf"), 
-       plot = p1, width = 14, height = 6)
-cat(sprintf("  ✓ Saved: %s\n", file.path(fig_dir, "decomposition_overlay.pdf")))
+# Get predictions
+y2_vars <- variables(draws_se)[grepl("^y2\\[", variables(draws_se))]
+y2_se <- colMeans(as_draws_matrix(subset_draws(draws_se, variable = y2_vars)))
 
-# Plot 2: Separated Components (Faceted)
-df_long <- df_components %>%
-  pivot_longer(
-    cols = c(observations, trend_total, seasonal_effect, prediction),
-    names_to = "component",
-    values_to = "value"
-  ) %>%
-  mutate(
-    component = factor(
-      component, 
-      levels = c("observations", "trend_total", 
-                "seasonal_effect", "prediction"),
-      labels = c("Observations", "Trend (SE)", 
-                "Seasonal (Periodic)", "Combined (SE×PER)")
-    )
-  )
+# Compute white noise
+wn_se <- y2_se - (mlr_se + gp_se)
 
-p2 <- ggplot(df_long, aes(x = time, y = value)) +
-  geom_line(linewidth = 0.8) +
-  facet_wrap(~ component, ncol = 1, scales = "free_y") +
-  labs(
-    title = sprintf("GP Component Decomposition - Fold %d", fold_to_plot),
-    x = "Time",
-    y = "Value (standardized)"
-  ) +
-  theme_minimal(base_size = 12) +
-  theme(strip.background = element_rect(fill = "gray90"))
+rm(SE_draws, draws_se)
+gc()
 
-ggsave(file.path(fig_dir, "decomposition_faceted.pdf"), 
-       plot = p2, width = 14, height = 10)
-cat(sprintf("  ✓ Saved: %s\n", file.path(fig_dir, "decomposition_faceted.pdf")))
+# Extract PER Model Components -------------------------------------------------
+cat("Extracting PER model components...\n")
+load(file.path(results_dir, "GP_MLR_PER_IR.RData"))
+draws_per <- PER_draws[[fold_idx]]
 
-# Plot 3: Observations + Trend + Seasonal (Stacked View)
-p3 <- ggplot(df_components, aes(x = time)) +
-  # Shaded seasonal pattern
-  geom_ribbon(
-    aes(ymin = trend_total - abs(seasonal_effect)/2, 
-        ymax = trend_total + abs(seasonal_effect)/2),
-    fill = "#377EB8", alpha = 0.2
-  ) +
-  # Trend line
-  geom_line(aes(y = trend_total, color = "Trend"), 
-            linewidth = 1.2) +
-  # Observations
+# Get GP component (PER kernel)
+gp_vars <- variables(draws_per)[grepl("^gp_component\\[", variables(draws_per))]
+gp_per <- colMeans(as_draws_matrix(subset_draws(draws_per, variable = gp_vars)))
+
+# Get beta and compute MLR
+beta_vars <- variables(draws_per)[grepl("^beta\\[", variables(draws_per))]
+beta_per <- colMeans(as_draws_matrix(subset_draws(draws_per, variable = beta_vars)))
+mlr_per <- as.numeric(as.matrix(X2_fold) %*% beta_per)
+
+# Get predictions
+y2_vars <- variables(draws_per)[grepl("^y2\\[", variables(draws_per))]
+y2_per <- colMeans(as_draws_matrix(subset_draws(draws_per, variable = y2_vars)))
+
+# Compute white noise
+wn_per <- y2_per - (mlr_per + gp_per)
+
+rm(PER_draws, draws_per)
+gc()
+
+# Extract SExPER Model Components ----------------------------------------------
+cat("Extracting SExPER model components...\n")
+load(file.path(results_dir, "GP_MLR_SExPER_IR.RData"))
+draws_sexper <- SExPER_draws[[fold_idx]]
+
+# Get GP component (SExPER kernel)
+gp_vars <- variables(draws_sexper)[grepl("^gp_component\\[", variables(draws_sexper))]
+gp_sexper <- colMeans(as_draws_matrix(subset_draws(draws_sexper, variable = gp_vars)))
+
+# Get beta and compute MLR
+beta_vars <- variables(draws_sexper)[grepl("^beta\\[", variables(draws_sexper))]
+beta_sexper <- colMeans(as_draws_matrix(subset_draws(draws_sexper, variable = beta_vars)))
+mlr_sexper <- as.numeric(as.matrix(X2_fold) %*% beta_sexper)
+
+# Get predictions
+y2_vars <- variables(draws_sexper)[grepl("^y2\\[", variables(draws_sexper))]
+y2_sexper <- colMeans(as_draws_matrix(subset_draws(draws_sexper, variable = y2_vars)))
+
+# Compute white noise
+wn_sexper <- y2_sexper - (mlr_sexper + gp_sexper)
+
+rm(SExPER_draws, draws_sexper)
+gc()
+
+# Create Plot 1: SE Model ------------------------------------------------------
+cat("Creating Plot 1: SE Model components...\n")
+
+df_se <- data.frame(
+  time = time_idx,
+  observations = observations,
+  mlr = mlr_se,
+  kernel = gp_se,
+  noise = wn_se,
+  fitted = y2_se
+)
+
+p1 <- ggplot(df_se, aes(x = time)) +
   geom_point(aes(y = observations, color = "Observations"), 
-             size = 0.8, alpha = 0.5) +
-  # Combined prediction
-  geom_line(aes(y = prediction, color = "Prediction"), 
-            linewidth = 1, linetype = "dashed") +
+             size = 1.5, alpha = 0.5) +
+  geom_line(aes(y = mlr, color = "MLR"), linewidth = 1) +
+  geom_line(aes(y = kernel, color = "SE"), linewidth = 1) +
+  geom_line(aes(y = noise, color = "WN"), linewidth = 0.8, alpha = 0.7) +
+  geom_line(aes(y = fitted, color = "Fitted"), linewidth = 1.2, linetype = "dashed") +
   scale_color_manual(
     values = c(
       "Observations" = "gray30",
-      "Trend" = "#E41A1C",
-      "Prediction" = "#4DAF4A"
-    )
+      "MLR" = "#E41A1C",
+      "SE" = "#377EB8",
+      "WN" = "#984EA3",
+      "Fitted" = "#4DAF4A"
+    ),
+    breaks = c("Observations", "MLR", "SE", "WN", "Fitted")
   ) +
   labs(
-    title = sprintf("Trend with Seasonal Variation - Fold %d", fold_to_plot),
-    subtitle = "Shaded area shows seasonal (periodic) effect around trend",
+    title = NULL,
     x = "Time",
-    y = "Value (standardized)",
-    color = "Component"
+    y = "Value",
+    color = NULL
   ) +
   theme_minimal(base_size = 12) +
   theme(legend.position = "bottom")
 
-ggsave(file.path(fig_dir, "decomposition_shaded.pdf"), 
-       plot = p3, width = 14, height = 6)
-cat(sprintf("  ✓ Saved: %s\n", file.path(fig_dir, "decomposition_shaded.pdf")))
+ggsave(file.path(fig_dir, "SE_components_fold1.pdf"), 
+       plot = p1, width = 12, height = 6)
+cat("  Saved: SE_components_fold1.pdf\n")
 
-# Plot 4: Only Trend and Seasonal (Clean Decomposition)
-p4 <- ggplot(df_components, aes(x = time)) +
-  geom_hline(yintercept = 0, linetype = "dotted", color = "gray50") +
-  geom_line(aes(y = trend_total, color = "Trend (SE)"), 
-            linewidth = 1.2) +
-  geom_line(aes(y = seasonal_effect, color = "Seasonal (Periodic)"), 
-            linewidth = 1.2) +
+# Create Plot 2: PER Model -----------------------------------------------------
+cat("Creating Plot 2: PER Model components...\n")
+
+df_per <- data.frame(
+  time = time_idx,
+  observations = observations,
+  mlr = mlr_per,
+  kernel = gp_per,
+  noise = wn_per,
+  fitted = y2_per
+)
+
+p2 <- ggplot(df_per, aes(x = time)) +
+  geom_point(aes(y = observations, color = "Observations"), 
+             size = 1.5, alpha = 0.5) +
+  geom_line(aes(y = mlr, color = "MLR"), linewidth = 1) +
+  geom_line(aes(y = kernel, color = "PER"), linewidth = 1) +
+  geom_line(aes(y = noise, color = "WN"), linewidth = 0.8, alpha = 0.7) +
+  geom_line(aes(y = fitted, color = "Fitted"), linewidth = 1.2, linetype = "dashed") +
   scale_color_manual(
     values = c(
-      "Trend (SE)" = "#E41A1C",
-      "Seasonal (Periodic)" = "#377EB8"
-    )
+      "Observations" = "gray30",
+      "MLR" = "#E41A1C",
+      "PER" = "#377EB8",
+      "WN" = "#984EA3",
+      "Fitted" = "#4DAF4A"
+    ),
+    breaks = c("Observations", "MLR", "PER", "WN", "Fitted")
   ) +
   labs(
-    title = sprintf("Extracted Components - Fold %d", fold_to_plot),
-    subtitle = "Trend from SE kernel | Seasonal from Periodic kernel",
+    title = NULL,
     x = "Time",
-    y = "Effect (standardized)",
-    color = "Component"
+    y = "Value",
+    color = NULL
   ) +
   theme_minimal(base_size = 12) +
   theme(legend.position = "bottom")
 
-ggsave(file.path(fig_dir, "decomposition_clean.pdf"), 
-       plot = p4, width = 14, height = 6)
-cat(sprintf("  ✓ Saved: %s\n", file.path(fig_dir, "decomposition_clean.pdf")))
+ggsave(file.path(fig_dir, "PER_components_fold1.pdf"), 
+       plot = p2, width = 12, height = 6)
+cat("  Saved: PER_components_fold1.pdf\n")
 
-# -----------------------------------------------------------------------------
-# Create Plots for Selected Folds Only (to save memory)
-# -----------------------------------------------------------------------------
+# Create Plot 3: SExPER Model --------------------------------------------------
+cat("Creating Plot 3: SExPER Model components...\n")
 
-cat("\n=== Creating plots for selected CV folds ===\n\n")
+df_sexper <- data.frame(
+  time = time_idx,
+  observations = observations,
+  mlr = mlr_sexper,
+  kernel = gp_sexper,
+  noise = wn_sexper,
+  fitted = y2_sexper
+)
 
-# Process folds 1, 4, and 7 (beginning, middle, end)
-for (fold_i in c(1, 4, 7)) {
-  df_fold <- extract_components_efficient(fold_idx = fold_i)
-  
-  p_fold <- ggplot(df_fold, aes(x = time)) +
-    geom_line(aes(y = observations, color = "Observations"), 
-              linewidth = 0.5, alpha = 0.6) +
-    geom_line(aes(y = trend_total, color = "Trend (SE)"), 
-              linewidth = 1) +
-    geom_line(aes(y = seasonal_effect, color = "Seasonal (Periodic)"), 
-              linewidth = 0.8, linetype = "dashed") +
-    geom_line(aes(y = prediction, color = "Combined (SE×PER)"), 
-              linewidth = 1.2) +
-    scale_color_manual(
-      values = c(
-        "Observations" = "gray40",
-        "Trend (SE)" = "#E41A1C",
-        "Seasonal (Periodic)" = "#377EB8",
-        "Combined (SE×PER)" = "#4DAF4A"
-      )
-    ) +
-    labs(
-      title = sprintf("GP Decomposition - Fold %d", fold_i),
-      x = "Time",
-      y = "Value (standardized)",
-      color = "Component"
-    ) +
-    theme_minimal(base_size = 12) +
-    theme(legend.position = "bottom")
-  
-  filename <- sprintf("decomposition_fold%d.pdf", fold_i)
-  ggsave(file.path(fig_dir, filename), plot = p_fold, width = 14, height = 6)
-  cat(sprintf("  ✓ Saved: %s\n", file.path(fig_dir, filename)))
-  
-  rm(df_fold, p_fold)
-  gc()
-}
+p3 <- ggplot(df_sexper, aes(x = time)) +
+  geom_point(aes(y = observations, color = "Observations"), 
+             size = 1.5, alpha = 0.5) +
+  geom_line(aes(y = mlr, color = "MLR"), linewidth = 1) +
+  geom_line(aes(y = kernel, color = "SExPER"), linewidth = 1) +
+  geom_line(aes(y = noise, color = "WN"), linewidth = 0.8, alpha = 0.7) +
+  geom_line(aes(y = fitted, color = "Fitted"), linewidth = 1.2, linetype = "dashed") +
+  scale_color_manual(
+    values = c(
+      "Observations" = "gray30",
+      "MLR" = "#E41A1C",
+      "SExPER" = "#377EB8",
+      "WN" = "#984EA3",
+      "Fitted" = "#4DAF4A"
+    ),
+    breaks = c("Observations", "MLR", "SExPER", "WN", "Fitted")
+  ) +
+  labs(
+    title = NULL,
+    x = "Time",
+    y = "Value",
+    color = NULL
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "bottom")
 
-# -----------------------------------------------------------------------------
-# Save Component Data for Fold 1 Only
-# -----------------------------------------------------------------------------
+ggsave(file.path(fig_dir, "SExPER_components_fold1.pdf"), 
+       plot = p3, width = 12, height = 6)
+cat("  Saved: SExPER_components_fold1.pdf\n")
 
-cat("\n=== Saving component data ===\n\n")
-
-save(df_components, file = file.path(results_dir, "gp_components_fold1.RData"))
-cat(sprintf("Saved: %s\n", file.path(results_dir, "gp_components_fold1.RData")))
-
-# Save summary statistics
-component_summary <- df_components %>%
-  summarise(
-    obs_mean = mean(observations),
-    obs_sd = sd(observations),
-    trend_mean = mean(trend_total),
-    trend_sd = sd(trend_total),
-    seasonal_mean = mean(seasonal_effect),
-    seasonal_sd = sd(seasonal_effect),
-    seasonal_amplitude = (max(seasonal_effect) - min(seasonal_effect)) / 2
-  )
-
-# -----------------------------------------------------------------------------
-# Print Summary
-# -----------------------------------------------------------------------------
-
-cat("\n", rep("=", 70), "\n", sep = "")
-cat("COMPONENT DECOMPOSITION SUMMARY\n")
-cat(rep("=", 70), "\n", sep = "")
-
-cat("\nComponent Statistics (Fold 1):\n")
-print(component_summary)
-
-cat("\n", rep("=", 70), "\n", sep = "")
-cat("DECOMPOSITION COMPLETE\n")
-cat(rep("=", 70), "\n\n", sep = "")
-cat(sprintf("All plots saved to: %s\n", fig_dir))
-cat(sprintf("Component data saved to: %s\n", 
-            file.path(results_dir, "gp_components_fold1.RData")))
+# Done -------------------------------------------------------------------------
+cat("\n=== COMPLETE ===\n")
+cat("Generated 3 plots for fold 1:\n")
+cat("  1. SE_components_fold1.pdf\n")
+cat("  2. PER_components_fold1.pdf\n")
+cat("  3. SExPER_components_fold1.pdf\n")
+cat(sprintf("\nSaved to: %s\n", fig_dir))

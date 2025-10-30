@@ -1,0 +1,148 @@
+========================================
+Air Quality Forecasting Analysis Pipeline
+========================================
+
+STEP 1: Extracting data from raw files...
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Extracting data from Excel files...
+New names:
+• `` -> `...1`
+  Processing file 1 of 4: 2019_NO2_CCT.xls
+New names:
+• `` -> `...1`
+  Processing file 2 of 4: 2019_PM10_CCT.xls
+New names:
+• `` -> `...1`
+  Processing file 3 of 4: 2019_SO2_CCT.xls
+New names:
+• `` -> `...1`
+  Processing file 4 of 4: Wind_direction_and_speed_2019.xlsx
+New names:
+• `` -> `...1`
+Data extraction complete. Saved to: data/extracted_data.RData
+  Observations: 8737
+  Variables: DateTime, NO2, PM10, SO2, Speed
+Warning messages:
+1: There was 1 warning in `mutate()`.
+ℹ In argument: `across(...)`.
+Caused by warning:
+! NAs introduced by coercion 
+2: There was 1 warning in `mutate()`.
+ℹ In argument: `across(...)`.
+Caused by warning:
+! NAs introduced by coercion 
+3: There was 1 warning in `mutate()`.
+ℹ In argument: `across(...)`.
+Caused by warning:
+! NAs introduced by coercion 
+4: There was 1 warning in `mutate()`.
+ℹ In argument: `across(...)`.
+Caused by warning:
+! NAs introduced by coercion 
+Step 1 complete
+
+STEP 2: Preprocessing and exploratory analysis...
+
+Attaching package: ‘lubridate’
+
+The following objects are masked from ‘package:base’:
+
+    date, intersect, setdiff, union
+
+Data loaded successfully
+  F_mat dimensions: 8737 x 5
+Added weekday/weekend indicator
+Creating exploratory plots...
+Computing summary statistics...
+Creating time series plots...
+Creating pairs plots...
+Preprocessing complete!
+There were 35 warnings (use warnings() to see them)
+Step 2 complete
+
+STEP 3: Transforming data for time series modeling...
+Registered S3 method overwritten by 'quantmod':
+  method            from
+  as.zoo.data.frame zoo 
+Transforming data for time series modeling...
+Complete cases: 7059 (80.8% of total)
+Creating plots for complete data...
+Don't know how to automatically pick scale for object of type <ts>. Defaulting
+to continuous.
+Don't know how to automatically pick scale for object of type <ts>. Defaulting
+to continuous.
+Don't know how to automatically pick scale for object of type <ts>. Defaulting
+to continuous.
+Don't know how to automatically pick scale for object of type <ts>. Defaulting
+to continuous.
+Don't know how to automatically pick scale for object of type <ts>. Defaulting
+to continuous.
+Train set: 336 observations
+Test set: 24 observations
+Available cores for parallel processing: 48
+Data transformation complete!
+Step 3 complete
+
+STEP 4: Evaluating simple forecasting models...
+Evaluating simple forecasting models with cross-validation...
+Running 10-fold rolling origin cross-validation...
+  Fold 1/10
+  Fold 2/10
+  Fold 3/10
+  Fold 4/10
+  Fold 5/10
+  Fold 6/10
+  Fold 7/10
+  Fold 8/10
+  Fold 9/10
+  Fold 10/10
+
+Cross-validated results for simple forecasting models:
+
+Results saved successfully!
+  Location: output/results
+Step 4 complete
+
+STEP 5: Evaluating SARIMA models...
+Evaluating SARIMA models with cross-validation...
+Creating ACF and PACF plots...
+Running 10-fold rolling origin cross-validation...
+  Fold 1/10
+  Fold 2/10
+  Fold 3/10
+  Fold 4/10
+  Fold 5/10
+  Fold 6/10
+  Fold 7/10
+  Fold 8/10
+  Fold 9/10
+  Fold 10/10
+
+Cross-validated results for SARIMA models:
+
+Results saved successfully!
+  Location: output/results
+Step 5 complete
+
+========================================
+Analysis pipeline completed successfully!
+========================================
+
+Generated outputs:
+Processed data: data/
+Figures: output/figures/
+Results: output/results/
+
+To view results:
+Simple forecasting: output/results/simple_forecasting_results.RData
+SARIMA models: output/results/sarima_results.RData

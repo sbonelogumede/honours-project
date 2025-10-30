@@ -1,0 +1,15 @@
+Registered S3 method overwritten by 'quantmod':
+  method            from
+  as.zoo.data.frame zoo 
+`geom_smooth()` using method = 'loess' and formula = 'y ~ x'
+Don't know how to automatically pick scale for object of type <ts>. Defaulting
+to continuous.
+`geom_smooth()` using method = 'loess' and formula = 'y ~ x'
+`geom_smooth()` using method = 'loess' and formula = 'y ~ x'
+Don't know how to automatically pick scale for object of type <ts>. Defaulting
+to continuous.
+`geom_smooth()` using method = 'loess' and formula = 'y ~ x'
+`geom_smooth()` using method = 'loess' and formula = 'y ~ x'
+Don't know how to automatically pick scale for object of type <ts>. Defaulting
+to continuous.
+`geom_smooth()` using method = 'loess' and formula = 'y ~ x'

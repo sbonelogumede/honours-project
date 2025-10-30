@@ -1,0 +1,136 @@
+Loading R/R-4.4.3
+  Loading requirement: mpi/openmpi-5.0.3
+Starting GP model diagnostics...
+Starting comprehensive diagnostics...
+
+======================================================================
+COMPREHENSIVE DIAGNOSTICS
+======================================================================
+
+======================================================================
+Processing SE Model
+======================================================================
+
+Parameters: alpha, sigma, lp__, beta[1], beta[2], beta[3], beta[4], beta[5]
+
+Draws: 500 iterations × 4 chains × 8 parameters
+
+Creating trace plots...
+Saved: output/figures/trace_SE.pdf
+Creating density plots...
+Saved: output/figures/density_SE.pdf
+Computing parameter summary...
+# A tibble: 8 × 10
+  variable       mean    median      sd     mad       q5      q95  rhat ess_bulk
+  <chr>         <dbl>     <dbl>   <dbl>   <dbl>    <dbl>    <dbl> <dbl>    <dbl>
+1 alpha      0.296      2.95e-1 2.34e-2 2.25e-2  2.60e-1  3.36e-1  1.00    1503.
+2 sigma      0.130      1.30e-1 8.97e-3 9.25e-3  1.16e-1  1.46e-1  1.00    1251.
+3 lp__     316.         3.17e+2 2.01e+0 1.86e+0  3.13e+2  3.19e+2  1.00     912.
+4 beta[1]   -0.669     -6.71e-1 9.20e-2 9.16e-2 -8.18e-1 -5.19e-1  1.00    1874.
+5 beta[2]    0.000320   3.25e-4 2.43e-4 2.41e-4 -8.54e-5  7.19e-4  1.00    1926.
+6 beta[3]    0.0271     2.63e-2 2.86e-2 2.84e-2 -1.87e-2  7.48e-2  1.00    1809.
+7 beta[4]    0.181      1.82e-1 3.49e-2 3.52e-2  1.23e-1  2.39e-1  1.00    1752.
+8 beta[5]   -0.159     -1.59e-1 2.24e-2 2.21e-2 -1.95e-1 -1.23e-1  1.00    1620.
+# ℹ 1 more variable: ess_tail <dbl>
+Creating residual diagnostics...
+Creating QQ plot with confidence bands...
+no dparams supplied. Estimating parameters from the data...
+Saved: resid_SE_*.pdf (6 files) in output/figures
+
+Residual Statistics:
+  metric      value
+1   Mean  0.1419511
+2     SD  0.2231721
+3    Min -0.3375921
+4    Max  0.5475263
+5   RMSE  0.2605392
+6    MAE  0.2229886
+
+======================================================================
+Processing PER Model
+======================================================================
+
+Parameters: alpha, rho, sigma, lp__, beta[1], beta[2], beta[3], beta[4], beta[5]
+
+Draws: 500 iterations × 4 chains × 9 parameters
+
+Creating trace plots...
+Saved: output/figures/trace_PER.pdf
+Creating density plots...
+Saved: output/figures/density_PER.pdf
+Computing parameter summary...
+# A tibble: 9 × 10
+  variable       mean    median      sd     mad       q5      q95  rhat ess_bulk
+  <chr>         <dbl>     <dbl>   <dbl>   <dbl>    <dbl>    <dbl> <dbl>    <dbl>
+1 alpha      1.19       1.19e+0 4.68e-1 4.61e-1  4.01e-1  1.97e+0  1.00     638.
+2 rho        8.32       5.80e+0 7.21e+0 2.57e+0  3.46e+0  2.05e+1  1.00     678.
+3 sigma      0.302      3.02e-1 1.26e-2 1.28e-2  2.83e-1  3.24e-1  1.00    1362.
+4 lp__     206.         2.06e+2 2.13e+0 1.99e+0  2.02e+2  2.08e+2  1.00     688.
+5 beta[1]   -0.563     -5.95e-1 1.09e+0 9.45e-1 -2.37e+0  1.28e+0  1.00    1007.
+6 beta[2]    0.000302   3.02e-4 1.20e-4 1.20e-4  9.67e-5  4.96e-4  1.00    1948.
+7 beta[3]    0.0984     9.85e-2 2.32e-2 2.19e-2  6.14e-2  1.37e-1  1.00    1342.
+8 beta[4]    0.146      1.47e-1 3.75e-2 3.62e-2  8.37e-2  2.08e-1  1.00    1202.
+9 beta[5]   -0.166     -1.65e-1 2.14e-2 2.10e-2 -2.03e-1 -1.32e-1  1.00    1101.
+# ℹ 1 more variable: ess_tail <dbl>
+Creating residual diagnostics...
+Creating QQ plot with confidence bands...
+no dparams supplied. Estimating parameters from the data...
+Saved: resid_PER_*.pdf (6 files) in output/figures
+
+Residual Statistics:
+  metric      value
+1   Mean  0.1215520
+2     SD  0.2331425
+3    Min -0.3540802
+4    Max  0.5565228
+5   RMSE  0.2585836
+6    MAE  0.2039771
+
+======================================================================
+Processing SEXPER Model
+======================================================================
+
+Parameters: alpha_se, alpha_per, rho_per, sigma, lp__, beta[1], beta[2], beta[3], beta[4], beta[5]
+
+Draws: 500 iterations × 4 chains × 10 parameters
+
+Creating trace plots...
+Saved: output/figures/trace_SExPER.pdf
+Creating density plots...
+Saved: output/figures/density_SExPER.pdf
+Computing parameter summary...
+# A tibble: 10 × 10
+   variable       mean   median      sd     mad       q5      q95  rhat ess_bulk
+   <chr>         <dbl>    <dbl>   <dbl>   <dbl>    <dbl>    <dbl> <dbl>    <dbl>
+ 1 alpha_se    6.40e-1  5.45e-1 3.83e-1 3.44e-1  2.05e-1  1.38e+0 1.000    1053.
+ 2 alpha_per   6.49e-1  5.44e-1 3.87e-1 3.50e-1  2.11e-1  1.44e+0 1.000    1044.
+ 3 rho_per     1.24e+1  1.07e+1 6.77e+0 4.57e+0  5.45e+0  2.54e+1 1.00     1725.
+ 4 sigma       1.30e-1  1.30e-1 8.90e-3 8.69e-3  1.16e-1  1.46e-1 1.00     1639.
+ 5 lp__        3.00e+2  3.00e+2 2.20e+0 2.06e+0  2.95e+2  3.02e+2 1.00      949.
+ 6 beta[1]    -6.72e-1 -6.70e-1 8.94e-2 8.63e-2 -8.22e-1 -5.28e-1 1.00     2083.
+ 7 beta[2]     3.32e-4  3.30e-4 2.34e-4 2.28e-4 -4.04e-5  7.20e-4 1.00     1994.
+ 8 beta[3]     2.90e-2  2.89e-2 2.70e-2 2.65e-2 -1.63e-2  7.37e-2 1.00     2375.
+ 9 beta[4]     1.81e-1  1.82e-1 3.53e-2 3.57e-2  1.22e-1  2.37e-1 1.00     1857.
+10 beta[5]    -1.58e-1 -1.59e-1 2.37e-2 2.32e-2 -1.97e-1 -1.20e-1 1.00     2179.
+# ℹ 1 more variable: ess_tail <dbl>
+Creating residual diagnostics...
+Creating QQ plot with confidence bands...
+no dparams supplied. Estimating parameters from the data...
+Saved: resid_SExPER_*.pdf (6 files) in output/figures
+
+Residual Statistics:
+  metric      value
+1   Mean  0.1372278
+2     SD  0.2302656
+3    Min -0.3590504
+4    Max  0.5565155
+5   RMSE  0.2639024
+6    MAE  0.2237011
+
+======================================================================
+DIAGNOSTICS COMPLETE
+======================================================================
+
+All diagnostic plots saved to: output/figures
+Diagnostics complete!
+Wed Oct 29 12:24:14 AM SAST 2025

@@ -1,0 +1,32 @@
+Loading R/R-4.4.3
+  Loading requirement: mpi/openmpi-5.0.3
+Starting GP component extraction...
+Loading data...
+Extracting SE model components...
+          used (Mb) gc trigger  (Mb) max used (Mb)
+Ncells 1638441 87.6    3545301 189.4  1659452 88.7
+Vcells 2711173 20.7    8388608  64.0  4802280 36.7
+Extracting PER model components...
+          used (Mb) gc trigger  (Mb) max used (Mb)
+Ncells 1638514 87.6    3545301 189.4  1659452 88.7
+Vcells 2711454 20.7    8388608  64.0  4802280 36.7
+Extracting SExPER model components...
+          used (Mb) gc trigger  (Mb) max used (Mb)
+Ncells 1638590 87.6    3545301 189.4  1659452 88.7
+Vcells 2711748 20.7    8388608  64.0  4802280 36.7
+Creating Plot 1: SE Model components...
+  Saved: SE_components_fold1.pdf
+Creating Plot 2: PER Model components...
+  Saved: PER_components_fold1.pdf
+Creating Plot 3: SExPER Model components...
+  Saved: SExPER_components_fold1.pdf
+
+=== COMPLETE ===
+Generated 3 plots for fold 1:
+  1. SE_components_fold1.pdf
+  2. PER_components_fold1.pdf
+  3. SExPER_components_fold1.pdf
+
+Saved to: output/figures
+Component extraction complete!
+Wed Oct 29 12:24:14 AM SAST 2025

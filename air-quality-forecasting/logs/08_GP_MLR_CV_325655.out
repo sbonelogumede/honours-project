@@ -1,0 +1,94 @@
+Loading R/R-4.4.3
+  Loading requirement: mpi/openmpi-5.0.3
+Starting GP cross-validation...
+Using 40 cores
+Using 40 cores
+Loading transformed data...
+Preparing data...
+Data dimensions:
+  - X_mean: 7059 observations × 5 predictors
+  - X_time: 7059 observations × 1 (time only)
+  - Response: 7059 observations
+Covariate names: Intercept, Time, PM10, SO2, Speed
+Data preparation complete
+
+Compiling Stan models...
+Models compiled successfully
+
+=== Running GP with SE Kernel ===
+
+=== Running GP with Periodic Kernel ===
+
+=== Running GP with SE × Periodic Product Kernel ===
+
+======================================================================
+RESULTS SUMMARY
+======================================================================
+
+GP with SE Kernel - Integrated Errors:
+  RMSE    MAE  SMAPE 
+ 0.449  0.371 98.915 
+
+GP with Periodic Kernel - Integrated Errors:
+  RMSE    MAE  SMAPE 
+ 0.407  0.330 91.094 
+
+GP with SE × Periodic Product Kernel - Integrated Errors:
+  RMSE    MAE  SMAPE 
+ 0.446  0.368 98.775 
+
+----------------------------------------------------------------------
+CONVERGENCE DIAGNOSTICS
+----------------------------------------------------------------------
+
+SE Kernel:
+   fold max_rhat divergences max_treedepth
+1     1 1.001329           0             0
+2     2 1.002123           0             0
+3     3 1.001779           0             0
+4     4 1.001626           0             0
+5     5 1.005710           0             0
+6     6 1.002269           0             0
+7     7 1.000565           0             0
+8     8 1.000488           0             0
+9     9 1.008842           0             0
+10   10 1.003007           0             0
+
+Periodic Kernel:
+   fold max_rhat divergences max_treedepth
+1     1 1.002259           0             0
+2     2 1.003309           0             0
+3     3 1.004995           3             0
+4     4 1.006800           0             0
+5     5 1.008347           0             0
+6     6 1.002499           1             0
+7     7 1.009731           0             0
+8     8 1.005542           0             0
+9     9 1.002543           0             0
+10   10 1.003358           0             0
+
+SE × Periodic Product Kernel:
+   fold max_rhat divergences max_treedepth
+1     1 1.001557           0             0
+2     2 1.000381           0             0
+3     3 1.002786           0             0
+4     4 1.003282           0             0
+5     5 1.002396           0             0
+6     6 1.002343           0             0
+7     7 1.009490           0             0
+8     8 1.002279           0             0
+9     9 1.003593           0             0
+10   10 1.002617           0             0
+
+Saving results...
+Saved: output/results/GP_MLR_SE_IR.RData
+Saved: output/results/GP_MLR_PER_IR.RData
+Saved: output/results/GP_MLR_SExPER_IR.RData
+
+======================================================================
+ALL RESULTS SAVED SUCCESSFULLY
+======================================================================
+
+Results saved to: output/results
+GP cross-validation complete!
+Wed Oct 29 12:08:51 AM SAST 2025

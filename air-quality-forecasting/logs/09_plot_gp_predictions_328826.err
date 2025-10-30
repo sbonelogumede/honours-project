@@ -1,0 +1,7 @@
+Registered S3 method overwritten by 'quantmod':
+  method            from
+  as.zoo.data.frame zoo 
+Error in data.frame(time = time_norm, observed = as.numeric(Y1_fold),  : 
+  arguments imply differing number of rows: 0, 336
+Calls: %>% -> mutate -> extract_fitted_values -> data.frame
+Execution halted

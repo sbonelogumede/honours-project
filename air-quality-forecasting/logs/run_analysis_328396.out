@@ -1,0 +1,33 @@
+Loading R/R-4.4.3
+  Loading requirement: mpi/openmpi-5.0.3
+Starting running analysis...
+[1] "Original data summary:"
+      Min. 1st Qu. Median   Mean     SD 3rd Qu.  Max. #Tot. #NA.
+NO2    0.0     5.0    9.0 12.729 10.724    17.0 113.0  8003  734
+PM10   0.0    12.0   17.0 19.824 12.302    24.0 158.0  8439  298
+SO2    0.0     2.0    3.0  6.202 11.299     5.0 142.0  8099  638
+Speed  0.5     2.3    3.6  3.735  1.710     4.9  11.2  7819  918
+[1] "Scaled data summary:"
+        Min. 1st Qu. Median Mean SD 3rd Qu.   Max. #Tot. #NA.
+NO2   -1.187  -0.721 -0.348    0  1   0.398  9.350  8003  734
+PM10  -1.611  -0.636 -0.230    0  1   0.339 11.232  8439  298
+SO2   -0.549  -0.372 -0.283    0  1  -0.106 12.019  8099  638
+Speed -1.892  -0.839 -0.079    0  1   0.681  4.365  7819  918
+[1] "Complete data summary:"
+        Min. 1st Qu. Median  Mean    SD 3rd Qu.   Max. #Tot. #NA.
+NO2   -1.187  -0.627 -0.254 0.005 0.985   0.398  9.350  7059    0
+PM10  -1.611  -0.636 -0.230 0.001 1.004   0.339 10.907  7059    0
+SO2   -0.549  -0.372 -0.283 0.001 1.016  -0.106 12.019  7059    0
+Speed -1.892  -0.781 -0.079 0.009 1.003   0.681  4.365  7059    0
+               IRMSE  IMAE  ISMAPE
+Mean           0.545 0.439  93.641
+Naive          0.560 0.459 114.881
+Seasonal Naive 0.765 0.622 123.359
+Drift          0.568 0.468 113.743
+                         IRMSE  IMAE ISMAPE
+SARIMA(1,0,0)(1,0,0)[24] 0.496 0.401 92.153
+SARIMA(1,0,0)(0,0,1)[24] 0.496 0.401 92.127
+SARIMA(2,0,0)(1,0,0)[24] 0.505 0.407 91.752
+SARIMA(1,0,1)(1,0,0)[24] 0.504 0.407 91.842
+Analysis complete!
+Wed Oct 29 12:16:12 AM SAST 2025

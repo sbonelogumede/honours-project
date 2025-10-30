@@ -63,7 +63,7 @@ ggsave(
 )
 
 # Cross-validation setup -------------------------------------------------------
-n_cv <- 7  # Number of cross-validation iterations
+n_cv <- 10  # Number of cross-validation iterations
 
 # Storage for results
 R_list <- list()

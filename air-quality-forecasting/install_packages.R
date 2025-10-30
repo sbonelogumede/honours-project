@@ -13,7 +13,7 @@ if (!dir.exists(lib_path)) dir.create(lib_path, recursive = TRUE, showWarnings =
 # ------------------------------
 # Install and load required packages
 # ------------------------------
-required_pkgs <- c("dplyr", "forecast", "GGally", "ggplot2", "ggcorrplot", "lubridate", "parallel", "readxl", "tidyr", "qqconf", "remotes")
+required_pkgs <- c("dplyr", "forecast", "GGally", "gridExtra", "grid", "ggplot2", "ggcorrplot", "lubridate", "parallel", "readxl", "tidyr", "qqconf", "remotes")
 for (pkg in required_pkgs) {
   if (!requireNamespace(pkg, quietly = TRUE)) {
     install.packages(pkg, lib = lib_path, repos = "https://cloud.r-project.org")

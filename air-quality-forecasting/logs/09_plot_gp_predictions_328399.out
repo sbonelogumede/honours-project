@@ -1,0 +1,39 @@
+Loading R/R-4.4.3
+  Loading requirement: mpi/openmpi-5.0.3
+Starting plotting gp predictions...
+Using 28 cores
+Loading transformed data...
+Loading GP model results...
+Preparing plotting data...
+Creating plot...
+Saving plot...
+
+======================================================================
+PLOT SAVED SUCCESSFULLY
+======================================================================
+
+PDF: output/figures/gp_predictions_all_folds.pdf
+
+----------------------------------------------------------------------
+SUMMARY STATISTICS
+----------------------------------------------------------------------
+
+95% Prediction Interval Coverage (%):
+# A tibble: 3 × 3
+  model_label             mean_coverage sd_coverage
+  <fct>                           <dbl>       <dbl>
+1 GP SE Kernel                     87.9        17.2
+2 GP Periodic Kernel               89.2        11.1
+3 GP SE × Periodic Kernel          87.9        17.2
+
+Average Prediction Interval Width:
+# A tibble: 3 × 3
+  model_label             mean_width sd_width
+  <fct>                        <dbl>    <dbl>
+1 GP SE Kernel                  1.50   0.136 
+2 GP Periodic Kernel            1.30   0.0594
+3 GP SE × Periodic Kernel       1.49   0.125 
+
+======================================================================
+Plotting GP predictions complete!
+Wed Oct 29 12:24:20 AM SAST 2025

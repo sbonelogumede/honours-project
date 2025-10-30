@@ -1,0 +1,9 @@
+Registered S3 method overwritten by 'quantmod':
+  method            from
+  as.zoo.data.frame zoo 
+Don't know how to automatically pick scale for object of type <ts>. Defaulting
+to continuous.
+Don't know how to automatically pick scale for object of type <ts>. Defaulting
+to continuous.
+Don't know how to automatically pick scale for object of type <ts>. Defaulting
+to continuous.

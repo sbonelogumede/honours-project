@@ -1,5 +1,5 @@
 # ==============================================================================
-# Gaussian Process Cross-Validation - HPC Optimized
+# Gaussian Process Cross-Validation
 # Purpose: Fit GP models (SE, PER, SExPER) with cross-validation
 # ==============================================================================
 
@@ -44,7 +44,35 @@ options(mc.cores = min(4, n_cores))
 
 cat("Loading transformed data...\n")
 load(file.path(data_dir, "transformed_data.RData"))
-n_cv <- 7
+n_cv <- 10
+
+# -----------------------------------------------------------------------------
+# Prepare Data: Separate Time from Covariates
+# -----------------------------------------------------------------------------
+
+cat("Preparing data...\n")
+
+X_mean <- X_mat  # Use as-is
+TIME_COLUMN_INDEX <- 2  # Time is in the second column
+
+# Extract time column for kernel
+X_time <- ts(
+  data = X_mean[, TIME_COLUMN_INDEX],
+  start = start(X_mean),
+  frequency = frequency(X_mean)
+)
+
+# Update dimensions
+p_mean <- ncol(X_mean)  # Number of predictors including intercept
+
+cat(sprintf("Data dimensions:\n"))
+cat(sprintf("  - X_mean: %d observations × %d predictors\n", 
+            nrow(X_mean), p_mean))
+cat(sprintf("  - X_time: %d observations × 1 (time only)\n", length(X_time)))
+cat(sprintf("  - Response: %d observations\n", length(Y_vec)))
+cat(sprintf("Covariate names: %s\n", paste(colnames(X_mean), collapse=", ")))
+
+cat("Data preparation complete\n\n")
 
 # -----------------------------------------------------------------------------
 # Compile Stan Models
@@ -77,40 +105,73 @@ run_cv_fold <- function(i, model_obj, model_name, use_period = FALSE,
                         is_product = FALSE) {
   
   # Calculate fold-specific train/test windows
-  X1_fold <- window(
-    x = X_mat, 
+  # Training data with intercept
+  X1_mean_fold <- window(
+    x = X_mean, 
     start = start(X1) + c(i-1, 0), 
     end = end(X1) + c(i-1, 0)
   )
+  
+  # Training time only
+  X1_time_fold <- window(
+    x = X_time, 
+    start = start(X1) + c(i-1, 0), 
+    end = end(X1) + c(i-1, 0)
+  )
+  
+  # Training response
   Y1_fold <- window(
     x = Y_vec, 
     start = start(Y1) + c(i-1, 0), 
     end = end(Y1) + c(i-1, 0)
   )
-  n1_fold <- dim(X1_fold)[1]
+  n1_fold <- length(Y1_fold)
   
-  X2_fold <- window(
-    x = X_mat, 
+  # Test data with intercept
+  X2_mean_fold <- window(
+    x = X_mean, 
     start = start(X2) + c(i-1, 0), 
     end = end(X2) + c(i-1, 0)
   )
+  
+  # Test time only
+  X2_time_fold <- window(
+    x = X_time, 
+    start = start(X2) + c(i-1, 0), 
+    end = end(X2) + c(i-1, 0)
+  )
+  
+  # Test response
   Y2_fold <- window(
     x = Y_vec, 
     start = start(Y2) + c(i-1, 0), 
     end = end(Y2) + c(i-1, 0)
   )
-  n2_fold <- dim(X2_fold)[1]
+  n2_fold <- length(Y2_fold)
   
-  # Prepare Stan data
+  # Prepare Stan data with separated inputs
   if (use_period || is_product) {
     stan_data <- list(
-      X1 = X1_fold, y1 = Y1_fold, n1 = n1_fold, p = p,
-      X2 = X2_fold, n2 = n2_fold, T = 24
+      X1_mean = X1_mean_fold, 
+      X1_time = as.vector(X1_time_fold),
+      y1 = Y1_fold, 
+      n1 = n1_fold, 
+      p_mean = p_mean,
+      X2_mean = X2_mean_fold,
+      X2_time = as.vector(X2_time_fold),
+      n2 = n2_fold, 
+      T = 24  # Period for hourly data with daily cycle
     )
   } else {
     stan_data <- list(
-      X1 = X1_fold, y1 = Y1_fold, n1 = n1_fold, p = p,
-      X2 = X2_fold, n2 = n2_fold
+      X1_mean = X1_mean_fold, 
+      X1_time = as.vector(X1_time_fold),
+      y1 = Y1_fold, 
+      n1 = n1_fold, 
+      p_mean = p_mean,
+      X2_mean = X2_mean_fold,
+      X2_time = as.vector(X2_time_fold),
+      n2 = n2_fold
     )
   }
   
@@ -129,7 +190,7 @@ run_cv_fold <- function(i, model_obj, model_name, use_period = FALSE,
     adapt_delta = 0.95
   )
   
-  # Extract ALL draws (not just y2)
+  # Extract ALL draws
   all_draws <- fit$draws(format = "draws_matrix")
   
   # Extract predictions for error calculation
@@ -158,7 +219,7 @@ run_cv_fold <- function(i, model_obj, model_name, use_period = FALSE,
     max_rhat = max_rhat,
     divergences = sum(diagnostics$num_divergent),
     max_treedepth = sum(diagnostics$num_max_treedepth),
-    draws = all_draws  # Return ALL draws
+    draws = all_draws
   ))
 }
 

@@ -27,7 +27,7 @@ load(file.path(data_dir, "transformed_data.RData"))
 message("Evaluating simple forecasting models with cross-validation...")
 
 # Cross-validation setup -------------------------------------------------------
-n_cv <- 7  # Number of cross-validation iterations
+n_cv <- 10  # Number of cross-validation iterations
 
 # Storage for results
 R_list <- list()

@@ -63,13 +63,9 @@ message("Creating plots for complete data...")
 scatter_plot(X = YX_mat2, name = "complete", output_dir = fig_dir)
 pairs_plot(X = YX_mat2, name = "complete", output_dir = fig_dir)
 
-# Create daily curve plots -----------------------------------------------------
-message("Creating daily curve plots for complete data...")
-daily_curves_plot(X = YX_mat2, name = "complete", output_dir = fig_dir)
-
 # Train/test split configuration ----------------------------------------------
-# Training period: 7 days
-d <- c(7, 24)
+# Training period: 14 days
+d <- c(14, 24)
 
 # Forecast horizon: 1 day
 h <- c(1, 0)

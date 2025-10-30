@@ -4,8 +4,8 @@
 #SBATCH --error=logs/08_GP_MLR_CV_%j.err
 #SBATCH --time=48:00:00
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=28
-#SBATCH --mem=64G
+#SBATCH --cpus-per-task=40
+#SBATCH --mem=60G
 #SBATCH --partition=ada
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=gmdsbo006@myuct.ac.za

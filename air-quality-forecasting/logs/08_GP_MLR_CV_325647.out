@@ -1,0 +1,18 @@
+Loading R/R-4.4.3
+  Loading requirement: mpi/openmpi-5.0.3
+Starting GP cross-validation...
+Using 28 cores
+Using 28 cores
+Loading transformed data...
+Preparing data...
+Data dimensions:
+  - X_mean: 7059 observations × 5 predictors
+  - X_time: 7059 observations × 1 (time only)
+  - Response: 7059 observations
+Covariate names: Intercept, Time, PM10, SO2, Speed
+Data preparation complete
+
+Compiling Stan models...
+Models compiled successfully
+
+=== Running GP with SE Kernel ===
