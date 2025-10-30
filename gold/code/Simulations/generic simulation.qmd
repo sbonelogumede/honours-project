@@ -1,0 +1,491 @@
+---
+title: "Generic simulations"
+format: pdf
+editor: visual
+---
+
+```{r}
+library(kernlab)
+library(ggplot2)
+library(dplyr)
+
+set.seed(123)
+n <- 100
+x <- seq(0, 10, length.out = n)
+
+# Helper to compute covariance
+cov_mat <- function(x1, x2, kernel_fun) {
+  outer(x1, x2, FUN = kernel_fun)
+}
+
+# Define kernels
+k_rbf <- function(x, y, l = 1) exp(-0.5 * (outer(x, y, "-") / l)^2)
+k_white <- function(x, y, sigma = 1) diag(sigma^2, length(x))
+k_periodic <- function(x, y, p = 2, l = 1) exp(-2 * (sin(pi * abs(outer(x, y, "-")) / p) / l)^2)
+
+# Generate GP samples
+simulate_gp <- function(x, mean_fun, K, noise_sd = 0.0) {
+  L <- chol(K + diag(1e-6, length(x)))
+  y <- mean_fun(x) + L %*% rnorm(length(x))
+  return(as.numeric(y))
+}
+
+# Mean functions
+f_zero <- function(x) rep(0, length(x))
+f_linear <- function(x) 0.1 * x
+f_sine <- function(x) sin(x)
+
+# 1️⃣ Linear + RBF
+K1 <- k_rbf(x, x, l = 1.2)
+y1 <- simulate_gp(x, f_linear, K1)
+
+# 2️⃣ White Noise (Independent)
+K2 <- k_white(x, x, sigma = 0.2)
+y2 <- simulate_gp(x, f_zero, K2)
+
+# 3️⃣ Combined (RBF + White Noise)
+K3 <- k_rbf(x, x, l = 1.0) + k_white(x, x, sigma = 0.2)
+y3 <- simulate_gp(x, f_linear, K3)
+
+# 4️⃣ Periodic + RBF
+K4 <- k_periodic(x, x, p = 3, l = 1) + 0.5 * k_rbf(x, x, l = 2)
+y4 <- simulate_gp(x, f_zero, K4)
+
+# Combine all for plotting
+df_all <- bind_rows(
+  data.frame(x, y = y1, case = "Linear + RBF"),
+  data.frame(x, y = y2, case = "White Noise"),
+  data.frame(x, y = y3, case = "RBF + White Noise"),
+  data.frame(x, y = y4, case = "Periodic + RBF")
+)
+
+# Plot
+ggplot(df_all, aes(x, y)) +
+  geom_point(size = 1, alpha = 0.3) +
+  geom_line(color = "steelblue", linewidth = 0.5) +
+  facet_wrap(~ case, scales = "free_y") +
+  theme_minimal(base_size = 14) +
+  labs(
+    title = "Gaussian Process Simulations with Different Covariance Functions",
+    x = "x (input)",
+    y = "y (output)"
+  )
+
+```
+
+```{r}
+# ============================================================
+#   Gaussian Process Simulation (Multiple Kernel Scenarios)
+# ============================================================
+
+# --- Libraries ---
+library(MASS)       # for mvrnorm
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+set.seed(123)
+n <- 100
+x <- seq(0, 10, length.out = n)
+
+# === Define Kernel Functions (dimension-safe) ===
+k_rbf <- function(x, y, l = 1, sigma_f = 1) {
+  d <- outer(x, y, "-")
+  sigma_f^2 * exp(-0.5 * (d / l)^2)
+}
+
+k_white <- function(x, y, sigma_n = 0.3) {
+  if (length(x) == length(y) && all(x == y)) {
+    diag(sigma_n^2, length(x))
+  } else {
+    matrix(0, nrow = length(x), ncol = length(y))
+  }
+}
+
+k_periodic <- function(x, y, p = 3, l = 1, sigma_f = 1) {
+  d <- abs(outer(x, y, "-"))
+  sigma_f^2 * exp(-2 * (sin(pi * d / p) / l)^2)
+}
+
+# Quasi-periodic = Periodic × RBF
+k_quasiperiodic <- function(x, y, p = 3, l1 = 1, l2 = 1.5, sigma_f = 1) {
+  d <- abs(outer(x, y, "-"))
+  k_periodic(x, y, p = p, l = l1, sigma_f = sigma_f) *
+    exp(-0.5 * (d / l2)^2)
+}
+
+# === GP Posterior Function (dimension-stable) ===
+gp_posterior <- function(x_train, y_train, x_pred, kernel, noise = 0.05) {
+  n_train <- length(x_train)
+  n_pred  <- length(x_pred)
+  
+  K    <- kernel(x_train, x_train) + diag(noise^2, n_train)
+  K_s  <- kernel(x_train, x_pred)
+  K_ss <- kernel(x_pred, x_pred) + diag(1e-6, n_pred)
+  
+  K_inv <- solve(K)
+  mu_s  <- as.vector(t(K_s) %*% K_inv %*% y_train)
+  cov_s <- K_ss - t(K_s) %*% K_inv %*% K_s
+  
+  # ensure covariance is symmetric
+  cov_s <- (cov_s + t(cov_s)) / 2
+  var_s <- diag(cov_s)
+  
+  list(
+    mean  = mu_s,
+    lower = mu_s - 2 * sqrt(var_s),
+    upper = mu_s + 2 * sqrt(var_s)
+  )
+}
+
+# === Mean functions ===
+f_zero   <- function(x) rep(0, length(x))
+f_linear <- function(x) 0.1 * x
+f_sine   <- function(x) sin(x)
+
+# === Training and Prediction grid ===
+x_train <- seq(0, 6, length.out = 50)
+x_pred  <- seq(0, 10, length.out = 200)
+
+# === Simulations ===
+
+# 1️⃣ Linear + RBF
+y_train1 <- f_linear(x_train) + mvrnorm(1, mu = rep(0, length(x_train)), 
+                                        Sigma = k_rbf(x_train, x_train, l = 1.2))
+gp1 <- gp_posterior(x_train, y_train1, x_pred, function(a, b) k_rbf(a, b, l = 1.2))
+
+# 2️⃣ White Noise
+y_train2 <- f_zero(x_train) + mvrnorm(1, mu = rep(0, length(x_train)), 
+                                      Sigma = k_white(x_train, x_train, sigma_n = 0.4))
+gp2 <- gp_posterior(x_train, y_train2, x_pred, function(a, b) k_white(a, b, sigma_n = 0.4))
+
+# 3️⃣ RBF + White Noise
+K_mix <- function(a, b) k_rbf(a, b, l = 1.0) + k_white(a, b, sigma_n = 0.2)
+y_train3 <- f_linear(x_train) + mvrnorm(1, mu = rep(0, length(x_train)), 
+                                        Sigma = K_mix(x_train, x_train))
+gp3 <- gp_posterior(x_train, y_train3, x_pred, K_mix)
+
+# 4️⃣ Periodic + RBF
+K_per_rbf <- function(a, b) k_periodic(a, b, p = 3, l = 1.0) + 0.5 * k_rbf(a, b, l = 2)
+y_train4 <- f_sine(x_train) + mvrnorm(1, mu = rep(0, length(x_train)), 
+                                      Sigma = K_per_rbf(x_train, x_train))
+gp4 <- gp_posterior(x_train, y_train4, x_pred, K_per_rbf)
+
+# 5️⃣ Quasi-Periodic (Periodic × RBF)
+K_quasi <- function(a, b) k_quasiperiodic(a, b, p = 3, l1 = 1.0, l2 = 1.5)
+y_train5 <- f_sine(x_train) + mvrnorm(1, mu = rep(0, length(x_train)), 
+                                      Sigma = K_quasi(x_train, x_train))
+gp5 <- gp_posterior(x_train, y_train5, x_pred, K_quasi)
+
+# === Combine Plot Data ===
+combine_gp <- function(gp, x_pred, y_train, x_train, label) {
+  df_pred <- data.frame(
+    x = x_pred,
+    mean = gp$mean,
+    lower = gp$lower,
+    upper = gp$upper,
+    case = label
+  )
+  df_train <- data.frame(
+    x = x_train,
+    y_train = y_train,
+    case = label
+  )
+  list(pred = df_pred, train = df_train)
+}
+# Combine all cases
+gp_list <- list(
+  combine_gp(gp1, x_pred, y_train1, x_train, "Linear + RBF"),
+  combine_gp(gp2, x_pred, y_train2, x_train, "White Noise"),
+  combine_gp(gp3, x_pred, y_train3, x_train, "RBF + White Noise"),
+  combine_gp(gp4, x_pred, y_train4, x_train, "Periodic + RBF"),
+  combine_gp(gp5, x_pred, y_train5, x_train, "Quasi-Periodic (RBF × Periodic)")
+)
+
+# Bind prediction and training separately
+df_pred_all  <- bind_rows(lapply(gp_list, `[[`, "pred"))
+df_train_all <- bind_rows(lapply(gp_list, `[[`, "train"))
+ggplot() +
+  geom_ribbon(data = df_pred_all, aes(x = x, ymin = lower, ymax = upper),
+              fill = "skyblue", alpha = 0.3) +
+  geom_line(data = df_pred_all, aes(x = x, y = mean), color = "blue", linewidth = 1) +
+  geom_point(data = df_train_all, aes(x = x, y = y_train),
+             color = "black", size = 1, alpha = 0.7) +
+  facet_wrap(~ case, ncol = 2, scales = "free_y") +
+  theme_minimal(base_size = 14) +
+  labs(
+    title = "Gaussian Process Simulations under Different Kernel Structures",
+    subtitle = "Blue = GP mean, shaded = 95% CI, black = observed data",
+    x = "x (input)",
+    y = "y (output)"
+  )
+
+
+
+```
+
+```{r}
+# --- Libraries ---
+library(MASS)
+library(ggplot2)
+library(dplyr)
+library(patchwork)
+
+set.seed(42)
+
+# --- Kernel definitions ---
+k_rbf <- function(x, y, l = 1, sigma_f = 1) {
+  sigma_f^2 * exp(-0.5 * (outer(x, y, "-") / l)^2)
+}
+
+k_white <- function(x, y, sigma_n = 0.3) {
+  if (length(x) != length(y)) stop("White noise defined only for equal-length x, y")
+  diag(sigma_n^2, length(x))
+}
+
+k_periodic <- function(x, y, p = 3, l = 1, sigma_f = 1) {
+  sigma_f^2 * exp(-2 * (sin(pi * abs(outer(x, y, "-")) / p) / l)^2)
+}
+
+# --- GP prior samples ---
+gp_sample <- function(x, kernel, n_samples = 3) {
+  K <- kernel(x, x) + diag(1e-6, length(x))
+  # Ensure correct matrix dimensions even for single sample
+  samples <- MASS::mvrnorm(n_samples, mu = rep(0, length(x)), Sigma = K)
+  if (is.vector(samples)) samples <- matrix(samples, nrow = 1)
+  t(samples)  # make samples in columns (x by n_samples)
+}
+
+# --- GP posterior ---
+gp_posterior <- function(x_train, y_train, x_pred, kernel, noise = 0.1, include_noise = TRUE) {
+  K <- kernel(x_train, x_train) + diag(noise^2, length(x_train))
+  K_s <- kernel(x_train, x_pred)
+  K_ss <- kernel(x_pred, x_pred)
+  K_inv <- solve(K)
+  
+  mu_s <- t(K_s) %*% K_inv %*% y_train
+  cov_s <- K_ss - t(K_s) %*% K_inv %*% K_s
+  if (include_noise) cov_s <- cov_s + diag(noise^2, length(x_pred))
+  
+  list(
+    mean = as.vector(mu_s),
+    upper = as.vector(mu_s + 2 * sqrt(pmax(0, diag(cov_s)))),
+    lower = as.vector(mu_s - 2 * sqrt(pmax(0, diag(cov_s))))
+  )
+}
+
+# --- Input grid ---
+x_pred <- seq(0, 10, length.out = 200)
+x_train <- seq(0, 6, length.out = 50)
+
+f_linear <- function(x) 0.2 * x
+f_zero <- function(x) rep(0, length(x))
+
+# --- Define kernels to compare ---
+kernels <- list(
+  "Linear + RBF"       = function(a, b) k_rbf(a, b, l = 1.0),
+  "Periodic + RBF"     = function(a, b) k_periodic(a, b, p = 3, l = 1) + 0.5 * k_rbf(a, b, l = 1.5),
+  "RBF + White Noise"  = function(a, b) k_rbf(a, b, l = 1) + k_white(a, b, sigma_n = 0.3),
+  "White Noise"        = function(a, b) k_white(a, b, sigma_n = 0.3)
+)
+
+# --- Create plots ---
+plot_list <- list()
+
+for (name in names(kernels)) {
+  cat("Simulating:", name, "\n")
+  
+  # --- GP Prior ---
+  Y_prior <- gp_sample(x_pred, kernels[[name]], n_samples = 3)
+  df_prior <- data.frame(
+    x = rep(x_pred, times = ncol(Y_prior)),
+    y = as.vector(Y_prior),
+    sample = factor(rep(1:ncol(Y_prior), each = length(x_pred)))
+  )
+  
+  p_prior <- ggplot(df_prior, aes(x, y, color = sample)) +
+    geom_line(linewidth = 0.8) +
+    theme_minimal(base_size = 13) +
+    theme(legend.position = "none") +
+    labs(title = name, y = "y (output)", x = "x (input)")
+  
+  # --- Simulate training data ---
+  y_train <- if (grepl("Linear", name)) f_linear(x_train) else f_zero(x_train)
+  y_train <- y_train + MASS::mvrnorm(1, mu = rep(0, length(x_train)),
+                                     Sigma = kernels[[name]](x_train, x_train))
+  
+  # --- Posterior ---
+  gp_post <- gp_posterior(x_train, y_train, x_pred, kernels[[name]],
+                          noise = 0.1, include_noise = TRUE)
+  df_post <- data.frame(
+    x = x_pred,
+    mean = gp_post$mean,
+    lower = gp_post$lower,
+    upper = gp_post$upper
+  )
+  
+  p_post <- ggplot(df_post, aes(x)) +
+    geom_ribbon(aes(ymin = lower, ymax = upper), fill = "skyblue", alpha = 0.3) +
+    geom_line(aes(y = mean), color = "blue", linewidth = 1) +
+    geom_point(data = data.frame(x = x_train, y = y_train),
+               aes(x, y), color = "black", size = 1.2, alpha = 0.7) +
+    theme_minimal(base_size = 13) +
+    labs(y = "y (output)", x = "x (input)")
+  
+  plot_list[[name]] <- p_prior / p_post
+}
+
+# --- Combine all ---
+wrap_plots(plot_list, ncol = 2) +
+  plot_annotation(
+    title = "Gaussian Process Simulations: Prior vs Posterior under Different Kernels",
+    subtitle = "Top: Prior samples | Bottom: Posterior mean ± 95% CI (blue shaded)"
+  )
+
+```
+
+```{r}
+# --- Libraries ---
+library(MASS)
+library(ggplot2)
+library(dplyr)
+library(patchwork)
+library(cowplot)
+
+set.seed(42)
+
+# --- Kernel definitions ---
+k_rbf <- function(x, y, l = 1, sigma_f = 1) {
+  sigma_f^2 * exp(-0.5 * (outer(x, y, "-") / l)^2)
+}
+
+# ✅ FIXED: Now handles both train-train and train-test calls
+k_white <- function(x, y, sigma_n = 0.3) {
+  # If equal length, return diagonal noise
+  if (length(x) == length(y) && all(x == y)) {
+    diag(sigma_n^2, length(x))
+  } else {
+    matrix(0, nrow = length(x), ncol = length(y))
+  }
+}
+
+k_periodic <- function(x, y, p = 3, l = 1, sigma_f = 1) {
+  sigma_f^2 * exp(-2 * (sin(pi * abs(outer(x, y, "-")) / p) / l)^2)
+}
+
+# --- GP prior samples ---
+gp_sample <- function(x, kernel, n_samples = 3) {
+  K <- kernel(x, x) + diag(1e-6, length(x))
+  samples <- MASS::mvrnorm(n_samples, mu = rep(0, length(x)), Sigma = K)
+  if (is.vector(samples)) samples <- matrix(samples, nrow = 1)
+  t(samples)
+}
+
+# --- GP posterior ---
+gp_posterior <- function(x_train, y_train, x_pred, kernel, noise = 0.1, include_noise = TRUE) {
+  K <- kernel(x_train, x_train) + diag(noise^2, length(x_train))
+  K_s <- kernel(x_train, x_pred)
+  K_ss <- kernel(x_pred, x_pred)
+  K_inv <- solve(K)
+  
+  mu_s <- t(K_s) %*% K_inv %*% y_train
+  cov_s <- K_ss - t(K_s) %*% K_inv %*% K_s
+  if (include_noise) cov_s <- cov_s + diag(noise^2, length(x_pred))
+  
+  list(
+    mean = as.vector(mu_s),
+    upper = as.vector(mu_s + 2 * sqrt(pmax(0, diag(cov_s)))),
+    lower = as.vector(mu_s - 2 * sqrt(pmax(0, diag(cov_s))))
+  )
+}
+
+# --- Input grid ---
+x_pred <- seq(0, 10, length.out = 200)
+x_train <- seq(0, 6, length.out = 50)
+
+f_linear <- function(x) 0.2 * x
+f_zero <- function(x) rep(0, length(x))
+
+# --- Define kernels ---
+kernels <- list(
+  "Linear + RBF"       = function(a, b) k_rbf(a, b, l = 1.0),
+  "Periodic + RBF"     = function(a, b) k_periodic(a, b, p = 3, l = 1) + 0.5 * k_rbf(a, b, l = 1.5),
+  "RBF + White Noise"  = function(a, b) k_rbf(a, b, l = 1) + k_white(a, b, sigma_n = 0.3),
+  "White Noise"        = function(a, b) k_white(a, b, sigma_n = 0.3)
+)
+
+# --- Generate plots ---
+plot_list <- list()
+
+for (name in names(kernels)) {
+  cat("Simulating:", name, "\n")
+  
+  # --- GP Prior ---
+  Y_prior <- gp_sample(x_pred, kernels[[name]], n_samples = 3)
+  df_prior <- data.frame(
+    x = rep(x_pred, times = ncol(Y_prior)),
+    y = as.vector(Y_prior),
+    sample = factor(rep(1:ncol(Y_prior), each = length(x_pred)))
+  )
+  
+  p_prior <- ggplot(df_prior, aes(x, y, color = sample)) +
+    geom_line(linewidth = 0.8) +
+    theme_minimal(base_size = 13) +
+    theme(legend.position = "none") +
+    labs(title = name, y = "y (output)", x = "x (input)")
+  
+  # --- Training data ---
+  y_train <- if (grepl("Linear", name)) f_linear(x_train) else f_zero(x_train)
+  y_train <- y_train + MASS::mvrnorm(1, mu = rep(0, length(x_train)),
+                                     Sigma = kernels[[name]](x_train, x_train))
+  
+  # --- Posterior ---
+  gp_post <- gp_posterior(x_train, y_train, x_pred, kernels[[name]], noise = 0.1)
+  df_post <- data.frame(
+    x = x_pred,
+    mean = gp_post$mean,
+    lower = gp_post$lower,
+    upper = gp_post$upper
+  )
+  
+  p_post <- ggplot(df_post, aes(x)) +
+    geom_ribbon(aes(ymin = lower, ymax = upper), fill = "skyblue", alpha = 0.3) +
+    geom_line(aes(y = mean), color = "blue", linewidth = 1) +
+    geom_point(data = data.frame(x = x_train, y = y_train),
+               aes(x, y), color = "black", size = 1.2, alpha = 0.7) +
+    theme_minimal(base_size = 13) +
+    labs(y = "y (output)", x = "x (input)")
+  
+  plot_list[[name]] <- p_prior / p_post
+}
+
+dev.new(width = 18, height = 10) 
+
+# --- Combine ---
+wrap_plots(plot_list, ncol = 4) +
+  plot_annotation(
+    title = "Gaussian Process Simulations: Prior vs Posterior under Different Kernels",
+    subtitle = "Top: Prior samples | Bottom: Posterior mean ± 95% CI (blue shaded)"
+  )
+
+# Extract prior and posterior plots
+priors <- lapply(plot_list, `[[`, "prior")
+posts  <- lapply(plot_list, `[[`, "post")
+
+# Combine top row (priors) and bottom row (posteriors)
+combined_plot <- wrap_plots(priors, ncol = length(priors)) /
+                 wrap_plots(posts,  ncol = length(posts))
+
+# Display in new window
+dev.new(width = 18, height = 10)
+combined_plot +
+  plot_annotation(
+    title = "Gaussian Process Simulations: Prior vs Posterior under Different Kernels",
+    subtitle = "Top: Prior samples | Bottom: Posterior mean ± 95% CI (blue shaded)",
+    theme = theme(
+      plot.title = element_text(face = "bold", size = 16, hjust = 0.5),
+      plot.subtitle = element_text(size = 12, hjust = 0.5)
+    )
+  )
+
+```

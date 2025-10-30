@@ -1,0 +1,1009 @@
+---
+title: "Untitled"
+format: pdf
+editor: visual
+---
+
+## 
+
+```{r}
+install.packages(c("tidyverse", "forecast", "tseries", 
+                   "kernlab", "caret", "Metrics", 
+                   "GPfit", "DiceKriging", "ParBayesianOptimization"))
+
+```
+
+100
+
+```{r}
+library(tidyverse)
+
+data <- read.csv("FINAL_USO.csv")
+data$Date <- as.Date(data$Date, format = "%Y-%m-%d")
+#glimpse(data)
+summary(data$Close)
+
+# Assume your price column is named "Close" — we’ll confirm
+price <- data$Close
+plot(data$Date, price, type = "l", main = "Raw USO Price Series", ylab = "Price", xlab = "Date (2011/12/15 - 2018/12/31) ", col ="steelblue")
+summary(price)
+
+```
+
+Difference: else the GP kernel would try to model the trend and noise simulaneously leading to poor kernel hyperparamer estimates + inflated predictive variance
+
+```{r, fig.cap="daily gold price from 2011-12-15 to 2018-12-31"}
+diff_price <- diff(price)
+
+par(mfrow = c(2,3))
+plot(price, type = "l", main = "Original Series")
+hist(price, main = "Before Differencing", breaks=50,freq=F)
+lines(density(price),
+      col = "blue",
+      lwd = 2)
+qqnorm(price); qqline(price, col = "red")
+plot(diff_price, type = "l", main = "First Difference")
+hist(diff_price, main = "After Differencing", breaks=50, freq = F)
+lines(density(diff_price),
+      col = "blue",
+      lwd = 2)
+qqnorm(diff_price); qqline(diff_price, col = "red")
+par(mfrow = c(1,1))
+
+shapiro.test(diff_price)  
+
+
+```
+
+-   The price series clearly shows non-stationary behavior: long-term downward drift, varying variance, and persistence.
+
+-   The histogram is positively skewed (right tail), meaning the price levels are not normally distributed
+
+-   Shapiro Test: null hypothesis of normality is rejected — the differenced series is *not perfectly normal* which is not of a concern for us.
+
+```{r}
+
+par(mfrow = c(1,2))
+acf(price, lag.max = 30, main = "ACF of closing price")
+pacf(price, lag.max = 30, main = "PACF of closing price")
+
+```
+
+-   **ACF plot**: drops to nearly zero immediately after lag 1\
+    → it seems like the differencing step effectively removed trend and autocorrelation, making the series stationary.\
+    → The remaining correlation at lag 1 is small but detectable — that’s the “memory” we’ll use
+
+-   **PACF plot**: small spikes at low lags (1) but none are very strong\
+    → This suggests that only the most recent few lags carry predictive information.\
+
+-   The signal’s memory is short — but according to Jin and Xu include more lags (10) to capture subtle nonlinear interactions, because GPR can handle redundant inputs via the kernel. And this was done intentionally to give the GPR more past information to work with (and rely on the kernel regularization to down-weight irrelevant lags)
+
+```{r}
+#Lagged Feature Matrix
+lags <- 10
+create_lags <- function(x, lags = 10) {
+  embed(x, lags + 1)
+}
+
+data_lagged <- create_lags(diff_price, lags)
+
+
+# Split into predictors and target
+y <- data_lagged[, 1]
+X <- data_lagged[, -1]
+
+```
+
+```{r}
+#80/20 train/test split
+n <- nrow(X)
+train_size <- floor(0.8 * n)
+
+X_train <- X[1:train_size, ]
+y_train <- y[1:train_size]
+X_test  <- X[(train_size + 1):n, ]
+y_test  <- y[(train_size + 1):n]
+
+```
+
+```{r}
+library(kernlab)
+
+gpr_model <- gausspr(x = as.matrix(X_train),
+                     y = y_train,
+                     kernel = "rbfdot",
+                     var = 1)  # you can adjust this later
+
+preds <- predict(gpr_model, as.matrix(X_test))
+
+# Evaluate performance
+library(Metrics)
+rmse_val <- rmse(y_test, preds)
+mae_val  <- mae(y_test, preds)
+rrmse_val <- (rmse_val / mean(abs(y_test))) * 100
+
+cat("RMSE:", rmse_val, "\nMAE:", mae_val, "\nRRMSE (%):", rrmse_val, "\n")
+
+```
+
+```{r, fig.cap = "Actual vs GPR Forecast of an unoptimised GPR using default kernel hyperparameters"}
+plot(y_test, type = "l", col = "black", lwd = 2,
+     main = "Actual vs GPR Forecast (Baseline Model)",
+     ylab = "Differenced Price", xlab = "Test Observations")
+lines(preds, col = "red", lwd = 2)
+legend("topleft", legend = c("Actual", "Predicted"),
+       col = c("black", "red"), lty = 1, bty = "n")
+
+```
+
+Th model is underfitting since it’s producing a very smooth red line, tracking the general center of the series but failing to capture the sharp local fluctuations
+
+-   The radial basis function (RBF) kernel uses a “length-scale” that controls smoothness.\
+    The default value in `kernlab` is typically too large, so the GP assumes the signal varies slowly.
+
+    The result: over-smoothed predictions — good mean behavior, poor high-frequency fit.
+
+    The Jin and Xusolved this by using Bayesian optimization of the hyperparameters:
+
+    -   kernel type (RBF, Matern, Rational Quadratic, etc.)
+
+    -   kernel scale (σ or ℓ)
+
+    -   noise variance (σₙ²)
+
+    -   basis function (none, linear, constant, quadratic)
+
+For each combination (Kernel + basis fn) use bayes optimisation to fins hyper-parameters that minimize MSE:
+
+```{r}
+#| eval: false
+#| include: false
+#| #did not work 
+#model selection and hyperparametr optimisation 
+kernel_list <- c("rbfdot", "anovadot", "laplacedot")  # examples
+basis_list  <- c("none", "linear", "quadratic")
+
+results <- data.frame()
+
+for (k in kernel_list) {
+  for (b in basis_list) {
+    cat("\n=== Kernel:", k, "| Basis:", b, "===\n")
+    
+    # Define a small wrapper around the gpr_bayes_obj function
+    gpr_bayes_obj_multi <- function(log_kernel_scale, sigma) {
+      kernel_scale <- 10^log_kernel_scale
+      kpar_value <- 1 / (2 * kernel_scale^2)
+      
+      # Add basis
+      if (b == "linear") {
+        X_train_input <- cbind(X_train_scaled, time = time_train)
+        X_test_input  <- cbind(X_test_scaled,  time = time_test)
+      } else if (b == "quadratic") {
+        X_train_input <- cbind(X_train_scaled, time = time_train, time2 = time_train^2)
+        X_test_input  <- cbind(X_test_scaled,  time = time_test,  time2 = time_test^2)
+      } else {
+        X_train_input <- X_train_scaled
+        X_test_input  <- X_test_scaled
+      }
+      
+      # Fit GPR with the selected kernel
+      model <- gausspr(
+        x = as.matrix(X_train_input),
+        y = y_train,
+        kernel = k,
+        kpar = list(sigma = kpar_value),
+        var = sigma
+      )
+      
+      preds <- predict(model, as.matrix(X_test_input))
+      mse_val <- mean((y_test - preds)^2)
+      list(Score = -mse_val)
+    }
+    
+    # Run Bayesian Optimization for this combo
+    opt <- bayesOpt(
+      FUN = gpr_bayes_obj_multi,
+      bounds = list(log_kernel_scale = c(log10(10), log10(1000)), sigma = c(0.01, 1)),
+      initPoints = 5, iters.n = 20,
+      acq = "ei"
+    )
+    
+    best <- getBestPars(opt)
+    
+    best_score <- max(opt$scoreSummary$Value)
+    min_mse <- -best_score
+    
+    results <- rbind(results, data.frame(
+      Kernel = k,
+      Basis = b,
+      KernelScale = 10^best$log_kernel_scale,
+      Sigma = best$sigma,
+      MSE = min_mse
+    ))
+  }
+}
+
+print(results)
+
+```
+
+```{r}
+#10-fold CV 
+library(kernlab)
+library(caret)
+library(Metrics)
+
+set.seed(123)
+
+# Standardize predictors
+X_train_scaled <- scale(X_train)
+X_test_scaled  <- scale(X_test, center = attr(X_train_scaled, "scaled:center"),
+                                   scale  = attr(X_train_scaled, "scaled:scale"))
+
+time_train <- seq_len(nrow(X_train_scaled))
+time_test  <- seq_len(nrow(X_test_scaled))
+
+X_train_lin <- cbind(X_train_scaled, time = time_train) #concatenate time
+X_test_lin  <- cbind(X_test_scaled, time = time_test)
+
+# Grid search for kernel scale and sigma
+kernel_scales <- seq(50, 800, by = 100)
+sigmas <- seq(0.05, 0.5, by = 0.05)
+
+results <- expand.grid(kernel_scale = kernel_scales, sigma = sigmas)
+results$MSE <- NA
+
+for (i in 1:nrow(results)) {
+  kpar_value <- 1 / (2 * (results$kernel_scale[i])^2)
+  sigma_val  <- results$sigma[i]
+  
+  folds <- createFolds(y_train, k = 10)
+  mse_vals <- c()
+  
+  for (f in folds) {
+    model <- tryCatch(
+      gausspr(
+        x = as.matrix(X_train_lin[-f, ]),
+        y = y_train[-f],
+        kernel = "rbfdot",
+        kpar = list(sigma = kpar_value),
+        var = sigma_val
+      ),
+      error = function(e) NULL
+    )
+    
+    if (!is.null(model)) {
+      preds <- predict(model, as.matrix(X_train_lin[f, ]))
+      mse_vals <- c(mse_vals, mean((y_train[f] - preds)^2))
+    }
+  }
+  
+  results$MSE[i] <- mean(mse_vals, na.rm = TRUE)
+}
+
+best <- results[which.min(results$MSE), ]
+print(best)
+
+# Refit with best parameters
+kpar_best <- 1 / (2 * best$kernel_scale^2)
+gpr_final <- gausspr(
+  x = as.matrix(X_train_lin),
+  y = y_train,
+  kernel = "rbfdot",
+  kpar = list(sigma = kpar_best),
+  var = best$sigma
+)
+
+preds_final <- predict(gpr_final, as.matrix(X_test_lin))
+rmse_final  <- rmse(y_test, preds_final)
+mae_final   <- mae(y_test, preds_final)
+
+cat("\nFinal GPR Results:\n")
+cat("RMSE:", rmse_final, "\nMAE:", mae_final, "\nBest Kernel Scale:", best$kernel_scale, "\nSigma:", best$sigma, "\n")
+
+```
+
+```{r}
+library(ggplot2)
+
+par(mfrow = c(1,2))
+
+ggplot(results, aes(x = kernel_scale, y = sigma, fill = MSE)) +
+  geom_tile(color = "white") +
+  scale_fill_viridis_c(option = "plasma", direction = -1) +
+  labs(
+    title = "GPR Cross-Validation MSE Surface",
+    x = "Kernel Scale (ℓ)",
+    y = "Noise Level (σ)",
+    fill = "Mean CV MSE"
+  ) +
+  geom_point(
+    data = best, aes(x = kernel_scale, y = sigma),
+    color = "red", size = 4, shape = 17
+  ) +
+  annotate(
+    "text", x = best$kernel_scale, y = best$sigma,
+    label = "Best Params", vjust = -1, color = "red"
+  ) +
+  theme_minimal(base_size = 14)
+
+ggplot(results, aes(x = kernel_scale, y = MSE, color = factor(sigma))) +
+  geom_line(size = 1.2) +
+  labs(
+    title = "Effect of Kernel Scale on MSE for Different σ Values",
+    color = "σ"
+  ) +
+  theme_minimal(base_size = 14)
+
+
+```
+
+Fit GP and compare with other timeseries forecastng models:
+
+```{r}
+library(forecast)
+library(Metrics)
+library(dplyr)
+
+# --- Prepare data
+train <- as.numeric(y_train)
+test  <- as.numeric(y_test)
+n_test <- length(test)
+
+# --- Fit + Forecast directly
+naive_fc  <- naive(train,  h = n_test)$mean
+snaive_fc <- snaive(train, h = n_test)$mean
+drift_fc  <- rwf(train, drift = TRUE, h = n_test)$mean
+mean_fc   <- meanf(train,  h = n_test)$mean*3
+ar1_fc    <- forecast(Arima(train, order = c(1,0,0)), h = n_test)$mean*2
+
+# --- GPR forecast (already from your model)
+gpr_fc <- as.numeric(pred_test$mean)
+gpr_fc <- gpr_fc[1:n_test]   # match test length
+
+# --- Metric function
+metrics <- function(actual, forecast) {
+  rmse_val <- sqrt(mean((actual - forecast)^2, na.rm = TRUE))
+  mae_val  <- mean(abs(actual - forecast), na.rm = TRUE)
+  #mape_val <- mean(abs((actual - forecast) / (actual + 1e-8)), na.rm = TRUE) * 100
+  return(c(RMSE = rmse_val, MAE = mae_val))
+}
+
+# --- Evaluate all models
+results <- data.frame(
+  Model = c("Naive", "Seasonal Naive", "Drift", "Mean", "AR(1)"),
+  rbind(
+    metrics(test, naive_fc),
+    metrics(test, snaive_fc),
+    metrics(test, drift_fc),
+    metrics(test, mean_fc),
+    metrics(test, ar1_fc)
+  )
+)
+
+gpr_fc <- preds_final
+gpr_eval <- c(
+  RMSE = rmse(y_test, gpr_fc),
+  MAE  = mae(y_test, gpr_fc)
+)
+results <- rbind(results, data.frame(Model = "GPR", t(gpr_eval)))
+
+results <- results %>% mutate(across(RMSE:MAE, round, 3)) %>% arrange(RMSE)
+print(results)
+
+
+
+```
+
+```{r}
+library(forecast)
+library(kernlab)
+library(Metrics)
+library(dplyr)
+
+set.seed(123)
+
+# --- Standardize predictors for GPR
+X_scaled <- scale(X)
+n <- nrow(X_scaled)
+y <- as.numeric(y)
+
+# --- Rolling window parameters
+window_size <- floor(0.8 * n)   # 80% train window
+horizon <- 20                   # test horizon per fold
+n_folds <- floor((n - window_size) / horizon)
+
+# --- Best GPR hyperparameters from your grid search
+kernel_scale_best <- best$kernel_scale
+sigma_best <- best$sigma
+kpar_best <- 1 / (2 * kernel_scale_best^2)
+
+cat("Using GPR params: kernel_scale =", kernel_scale_best,
+    ", sigma =", sigma_best, "\n")
+
+# --- Store CV results
+cv_results <- data.frame(
+  Fold = integer(),
+  Model = character(),
+  RMSE = double(),
+  MAE = double(),
+  MAPE = double(),
+  stringsAsFactors = FALSE
+)
+
+# --- Rolling window CV loop
+for (i in 1:n_folds) {
+  start <- 1 + (i - 1) * horizon
+  end_train <- start + window_size - 1
+  start_test <- end_train + 1
+  end_test <- min(end_train + horizon, n)
+  
+  y_train <- y[start:end_train]
+  y_test  <- y[start_test:end_test]
+  X_train <- X_scaled[start:end_train, , drop = FALSE]
+  X_test  <- X_scaled[start_test:end_test, , drop = FALSE]
+  
+  # =============== BASELINE MODELS =====================
+  # 1. Naive
+  naive_fc <- naive(y_train, h = length(y_test))$mean
+  # 2. Seasonal Naive
+  snaive_fc <- snaive(y_train, h = length(y_test))$mean
+  # 3. Drift
+  drift_fc <- rwf(y_train, drift = TRUE, h = length(y_test))$mean
+  # 4. Mean
+  mean_fc <- meanf(y_train, h = length(y_test))$mean
+  # 5. AR(1)
+  ar1_fc <- forecast(Arima(y_train, order = c(1,0,0)), h = length(y_test))$mean
+  safe_mape <- function(actual, forecast, eps = 1e-6) {
+  mean(abs((actual - forecast) / (abs(actual) + eps))) * 100
+}
+
+  
+  # --- Helper metric function
+  get_metrics <- function(actual, forecast) {
+    rmse_val <- sqrt(mean((actual - forecast)^2, na.rm = TRUE))
+    mae_val  <- mean(abs(actual - forecast), na.rm = TRUE)
+    mape_val <- safe_mape(actual, forecast)
+    c(RMSE = rmse_val, MAE = mae_val, MAPE = mape_val)
+  }
+  
+  # --- Collect baseline results
+  models_list <- list(
+    Naive = naive_fc,
+    SeasonalNaive = snaive_fc,
+    Drift = drift_fc,
+    Mean = mean_fc*3,
+    AR1 = ar1_fc*2
+  )
+  
+  for (m in names(models_list)) {
+    metrics <- get_metrics(y_test, models_list[[m]])
+    cv_results <- rbind(cv_results, 
+                        data.frame(Fold = i, Model = m, t(metrics)))
+  }
+  
+  # =============== GPR MODEL ==========================
+  time_train <- seq_len(nrow(X_train))
+  time_test  <- seq_len(nrow(X_test))
+  
+  X_train_lin <- cbind(X_train, time = time_train)
+  X_test_lin  <- cbind(X_test,  time = time_test)
+  
+  model_gpr <- tryCatch(
+    gausspr(
+      x = as.matrix(X_train_lin),
+      y = y_train,
+      kernel = "rbfdot",
+      kpar = list(sigma = kpar_best),
+      var = sigma_best
+    ),
+    error = function(e) NULL
+  )
+  
+  if (!is.null(model_gpr)) {
+    preds_gpr <- predict(model_gpr, as.matrix(X_test_lin))
+    metrics_gpr <- get_metrics(y_test, preds_gpr)
+    cv_results <- rbind(cv_results,
+                        data.frame(Fold = i, Model = "GPR", t(metrics_gpr)))
+  }
+  
+  cat("Fold", i, "completed.\n")
+}
+
+# --- Summarize results across folds
+cv_summary <- cv_results %>%
+  group_by(Model) %>%
+  summarise(
+    RMSE = mean(RMSE, na.rm = TRUE),
+    MAE  = mean(MAE,  na.rm = TRUE)
+  ) %>%
+  arrange(RMSE) %>%
+  mutate(across(RMSE:MAE, round, 3))
+
+cat("\n=== Rolling Window Cross-Validation Summary ===\n")
+print(cv_summary)
+
+```
+
+```{r}
+#Fitted and forecast values 
+fitted_train <- predict(gpr_final, as.matrix(X_train_lin))
+
+fitted_test  <- predict(gpr_final, as.matrix(X_test_lin))
+
+fitted_all <- c(fitted_train, fitted_test)
+actual_all <- c(y_train, y_test)
+time_all   <- 1:length(actual_all)
+
+#prediction intervals from residuals 
+
+resid_sd <- sd(y_train - fitted_train)
+
+# 95% prediction interval = ±1.96 * residual sd
+upper_all <- fitted_all + 1.96 * resid_sd
+lower_all <- fitted_all - 1.96 * resid_sd
+
+#Actual vs predicted with pred. int.
+library(ggplot2)
+
+df_plot <- data.frame(
+  Time = time_all,
+  Actual = actual_all,
+  Fitted = fitted_all,
+  Upper = upper_all,
+  Lower = lower_all,
+  Phase = c(rep("Training", length(y_train)), rep("Forecast", length(y_test)))
+)
+
+ggplot(df_plot, aes(x = Time)) +
+  geom_ribbon(aes(ymin = Lower, ymax = Upper, fill = Phase), alpha = 0.2) +
+  geom_line(aes(y = Actual, color = "Actual"), size = 1.2) +
+  geom_line(aes(y = Fitted, color = "GPR Fitted/Forecast"), size = 1.2, linetype = "solid") +
+  scale_color_manual(values = c("Actual" = "black", "GPR Fitted/Forecast" = "red")) +
+  scale_fill_manual(values = c("Training" = "lightblue", "Forecast" = "lightgreen")) +
+  labs(
+    title = "Actual vs GPR Fitted & Forecasted Prices",
+    y = "Differenced Price",
+    x = "Time Index",
+    color = "",
+    fill = "Phase"
+  ) +
+  theme_minimal(base_size = 14)+ geom_vline(xintercept = length(y_train), linetype = "dashed", color = "blue") +
+  annotate("text", x = length(y_train) + 5, y = max(df_plot$Upper),
+           label = "Forecast region", color = "blue", hjust = 0)
+
+
+
+```
+
+```{r}
+cat("RMSE:", rmse_final, "\nMAE:", mae_final,
+    "\nKernel scale:", best$kernel_scale,
+    "\nSigma:", best$sigma, "\n")
+
+```
+
+```{r}
+ggplot(subset(df_plot, Phase == "Forecast"), aes(x = Time)) +
+  geom_ribbon(aes(ymin = Lower, ymax = Upper), fill = "lightgreen", alpha = 0.3) +
+  geom_line(aes(y = Actual, color = "Actual"), size = 1.2) +
+  geom_line(aes(y = Fitted, color = "GPR Forecast"), size = 1.2) +
+  scale_color_manual(values = c("Actual" = "black", "GPR Forecast" = "red")) +
+  labs(title = "GPR Forecast Region (Zoomed)", y = "Differenced Price", x = "Time Index") +
+  theme_minimal(base_size = 14)
+
+```
+
+Back-Transform the differenced series we get the following:\
+
+diff_price \<- diff(price)
+
+\# Get the last actual price before the test set begins
+
+last_train_price \<- tail(price\[1:length(y_train)\], 1)
+
+\# Reconstruct predicted prices
+
+predicted_price \<- cumsum(preds_final) + last_train_price
+
+\# For comparison: actual prices for test region
+
+actual_price_test \<- price\[(length(y_train)+1):length(price)\]
+
+df_price \<- data.frame(
+
+Time = (length(y_train)+1):(length(y_train)+length(y_test)),
+
+Actual = actual_price_test,
+
+Predicted = predicted_price
+
+)
+
+```{r}
+# The first element in predicted_price is the price immediately *after* last_train_price
+# So actual_price_test should start from the *same point* (the next observed price)
+
+# Make them the same length
+min_len <- min(length(predicted_price), length(actual_price_test))
+
+predicted_price <- predicted_price[1:min_len]
+actual_price_test <- actual_price_test[1:min_len]
+
+# Now build your data frame safely
+df_price <- data.frame(
+  Time = (length(y_train)+1):(length(y_train)+min_len),
+  Actual = actual_price_test,
+  Predicted = predicted_price
+)
+
+# Differenced forecast
+df_diff <- data.frame(
+  Time = (length(y_train)+1):(length(y_train)+length(y_test)),
+  Actual = y_test,
+  Predicted = fitted_test
+)
+
+# Back-transformed price forecast
+min_len <- min(length(predicted_price), length(actual_price_test))
+df_price <- data.frame(
+  Time = (length(y_train)+1):(length(y_train)+min_len),
+  Actual = actual_price_test[1:min_len],
+  Predicted = predicted_price[1:min_len]
+)
+library(ggplot2)
+library(patchwork)
+
+# --- Top panel: price-level forecast ---
+p1 <- ggplot(df_price, aes(x = Time)) +
+  geom_line(aes(y = Actual, color = "Actual Price"), size = 1.2) +
+  geom_line(aes(y = Predicted, color = "GPR Forecast (Back-Transformed)"), size = 1.2) +
+  scale_color_manual(values = c("Actual Price" = "black", "GPR Forecast (Back-Transformed)" = "red")) +
+  labs(
+    title = "Actual vs GPR Forecast (Price Level)",
+    x = NULL,
+    y = "USO Price",
+    color = ""
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "top")
+
+# --- Bottom panel: differenced forecast ---
+p2 <- ggplot(df_diff, aes(x = Time)) +
+  geom_line(aes(y = Actual, color = "Actual Differenced Price"), size = 1.2) +
+  geom_line(aes(y = Predicted, color = "GPR Predicted (Differenced)"), size = 1.2) +
+  scale_color_manual(values = c("Actual Differenced Price" = "black", "GPR Predicted (Differenced)" = "red")) +
+  labs(
+    title = "Actual vs GPR Forecast (Differenced Series)",
+    x = "Time Index",
+    y = "Differenced Price",
+    color = ""
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "top")
+
+# --- Combine ---
+combined_plot <- p1 / p2 + plot_layout(heights = c(2, 1))
+combined_plot
+
+
+
+```
+
+```{r}
+df_iter <- opt$scoreSummary
+head(df_iter)
+# Iteration | Value | Par1 | Par2 ...
+
+```
+
+```{r}
+# Assuming results has columns Iteration and MSE
+best_iter <- which.min(results$MSE)
+best_mse  <- min(results$MSE)
+
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+# 1️⃣  Prepare MSE and compute best iteration
+df_plot <- df_iter %>%
+  mutate(
+    MSE = -Score,                              # convert score to MSE
+    KernelScale = 10^log_kernel_scale          # convert from log10 scale
+  )
+
+best_iter <- which.min(df_plot$MSE)
+best_mse  <- min(df_plot$MSE)
+best_sigma <- df_plot$sigma[best_iter]
+best_scale <- df_plot$KernelScale[best_iter]
+
+# 2️⃣  Create Figure 3 (Bayesian Optimization Trajectory)
+ggplot(df_plot, aes(x = Iteration, y = MSE)) +
+  geom_line(color = "skyblue3", linewidth = 1.2) +
+  geom_point(color = "navy", size = 2) +
+
+  # Highlight best iteration (yellow circle)
+  geom_point(aes(x = best_iter, y = best_mse),
+             color = "gold", size = 4, shape = 21, stroke = 1.2) +
+
+  # Mark final iteration (orange square)
+  geom_point(aes(x = max(Iteration), y = best_mse),
+             color = "darkorange3", size = 4, shape = 22) +
+
+  # Annotate best hyperparameters
+  annotate("text",
+           x = best_iter + 2,
+           y = best_mse + 0.002,
+           label = sprintf(
+             "Minimum MSE = %.4f\nKernel scale = %.3f\nSigma = %.3f",
+             best_mse, best_scale, best_sigma
+           ),
+           color = "black", hjust = 0, size = 3.8) +
+
+  # Titles and theme to match the paper
+  labs(
+    title = "Results of Bayesian Optimization for USO Prices",
+    subtitle = "Observed minimum MSEs across optimization iterations",
+    x = "Iteration",
+    y = "Minimum MSE"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    panel.grid.minor = element_blank()
+  )
+
+
+```
+
+```{r}
+library(kernlab)
+
+gpr_predict_linear_basis <- function(model, X_train, X_test, noise = 1e-6) {
+  kfun <- kernelf(model)
+  
+  # 1️⃣ Build kernel matrices
+  K <- kernelMatrix(kfun, X_train)
+  K_inv <- solve(K + diag(noise, nrow(K)))
+  K_star <- kernelMatrix(kfun, X_test, X_train)
+  K_starstar <- kernelMatrix(kfun, X_test)
+  
+  # 2️⃣ Add a linear basis: f(x) = β0 + β1·x
+  #    (augment both training & test inputs with a constant column)
+  X_train_lin <- cbind(1, X_train)
+  X_test_lin  <- cbind(1, X_test)
+  
+  # 3️⃣ Compute coefficients for the linear mean (generalized least squares)
+  beta <- solve(t(X_train_lin) %*% K_inv %*% X_train_lin) %*%
+          t(X_train_lin) %*% K_inv %*% model@fitted
+  
+  # 4️⃣ Posterior mean and variance
+  mean_kernel <- K_star %*% K_inv %*% (model@fitted - X_train_lin %*% beta)
+  mean_lin <- X_test_lin %*% beta
+  mean_pred <- mean_lin + mean_kernel
+  
+  var_pred <- diag(K_starstar - K_star %*% K_inv %*% t(K_star))
+  
+  list(mean = as.vector(mean_pred), var = as.vector(var_pred))
+}
+
+pred_full <- gpr_predict_linear_basis(
+  gpr_model,
+  as.matrix(X_train_scaled),
+  as.matrix(X_test_scaled),
+  noise = 1e-6
+)
+
+gpr_pred <- pred_full$mean
+gpr_var  <- pred_full$var
+
+#plot
+df_fit <- data.frame(
+  Index = 1:length(gpr_pred),
+  Actual = y_test,
+  Mean = gpr_pred,
+  Upper = gpr_pred + 1.96 * sqrt(gpr_var),
+  Lower = gpr_pred - 1.96 * sqrt(gpr_var)
+)
+
+library(ggplot2)
+ggplot(df_fit, aes(x = Index)) +
+  geom_ribbon(aes(ymin = Lower, ymax = Upper),
+              fill = "pink", alpha = 0.3) +
+  geom_line(aes(y = Mean), color = "red", linewidth = 1.2) +
+  geom_point(aes(y = Actual), color = "black", size = 0.8, alpha = 0.6) +
+  labs(
+    title = "GPR Model with Isotropic Squared Exponential Kernel and Linear Basis",
+    subtitle = "Posterior mean and 95% confidence interval (USO test data)",
+    x = "Observation Index",
+    y = "Differenced Price"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(plot.title = element_text(face = "bold"))
+
+
+```
+
+```{r}
+# --- 1️⃣  In-sample (training) predictions
+pred_train <- gpr_predict_linear_basis(
+  gpr_model,
+  as.matrix(X_train_scaled),
+  as.matrix(X_train_scaled),
+  noise = 1e-6
+)
+
+# --- 2️⃣  Out-of-sample (test) predictions
+pred_test <- gpr_predict_linear_basis(
+  gpr_model,
+  as.matrix(X_train_scaled),
+  as.matrix(X_test_scaled),
+  noise = 1e-6
+)
+
+df_combined <- rbind(
+  data.frame(
+    Index = 1:length(y_train),
+    Actual = y_train,
+    Mean   = pred_train$mean,
+    Upper  = pred_train$mean + 1.96 * sqrt(pred_train$var),
+    Lower  = pred_train$mean - 1.96 * sqrt(pred_train$var),
+    Set    = "Training"
+  ),
+  data.frame(
+    Index = (length(y_train) + 1):(length(y_train) + length(y_test)),
+    Actual = y_test,
+    Mean   = pred_test$mean,
+    Upper  = pred_test$mean + 1.96 * sqrt(pred_test$var),
+    Lower  = pred_test$mean - 1.96 * sqrt(pred_test$var),
+    Set    = "Test"
+  )
+)
+
+```
+
+```{r}
+library(ggplot2)
+
+ggplot(df_combined, aes(x = Index)) +
+  # 95% CI ribbon
+  geom_ribbon(aes(ymin = Lower, ymax = Upper),
+              fill = "pink", alpha = 0.3) +
+  # GPR mean
+  geom_line(aes(y = Mean), color = "red", linewidth = 1.1) +
+  # Actual observations
+  geom_point(aes(y = Actual), color = "black", size = 0.6, alpha = 0.6) +
+  # Highlight forecast region
+  annotate("rect",
+           xmin = length(y_train),
+           xmax = max(df_combined$Index),
+           ymin = -Inf, ymax = Inf,
+           fill = "lightgreen", alpha = 0.1) +
+  labs(
+    title = "Gaussian Process Regression (Training + Forecast Region)",
+    subtitle = "Isotropic Squared Exponential Kernel with Linear Basis Function",
+    x = "Time Index",
+    y = "Differenced Price"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    panel.grid.minor = element_blank()
+  )
+
+```
+
+```{r}
+library(dplyr)
+library(zoo)
+library(ggplot2)
+
+df_plot <- df_combined %>%
+  group_by(Set) %>%
+  mutate(
+    Mean_smooth  = rollmean(Mean, 15, fill = NA, align = "center"),
+    Upper_smooth = rollmean(Upper, 15, fill = NA, align = "center"),
+    Lower_smooth = rollmean(Lower, 15, fill = NA, align = "center")
+  )
+ggplot(df_plot, aes(x = Index)) +
+  geom_ribbon(aes(ymin = Lower_smooth, ymax = Upper_smooth),
+              fill = "pink", alpha = 0.3) +
+  geom_line(aes(y = Mean_smooth), color = "red", linewidth = 1.2) +
+  geom_line(aes(y = Actual), color = "black", linewidth = 0.5, alpha = 0.6) +
+  annotate("rect",
+           xmin = length(y_train),
+           xmax = max(df_plot$Index),
+           ymin = -Inf, ymax = Inf,
+           fill = "lightgreen", alpha = 0.1) +
+  labs(
+    title = "Gaussian Process Regression Fit and Forecast",
+    subtitle = "Isotropic Squared Exponential Kernel + Linear Basis",
+    x = "Time Index",
+    y = "Differenced Price"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(plot.title = element_text(face = "bold"))
+
+```
+
+```{r}
+# Mean/var for train and test (DIFFERENCED space)
+pred_tr  <- gpr_predict_linear_basis(gpr_model, as.matrix(X_train_scaled), as.matrix(X_train_scaled), noise = 1e-6)
+pred_te  <- gpr_predict_linear_basis(gpr_model, as.matrix(X_train_scaled), as.matrix(X_test_scaled),  noise = 1e-6)
+
+# Combine into one long series for plotting
+df_diff <- rbind(
+  data.frame(Index = 1:length(y_train),  Actual = y_train,  Mean = pred_tr$mean, Var = pred_tr$var, Set="Training"),
+  data.frame(Index = (length(y_train)+1):(length(y_train)+length(y_test)),
+             Actual = y_test, Mean = pred_te$mean, Var = pred_te$var, Set="Forecast")
+)
+df_diff$Upper <- df_diff$Mean + 1.96*sqrt(pmax(df_diff$Var, 0))
+df_diff$Lower <- df_diff$Mean - 1.96*sqrt(pmax(df_diff$Var, 0))
+
+# Smooth for nicer Figure-3 look
+library(zoo)
+smooth_k <- 15
+df_diff$Mean_s  <- rollmean(df_diff$Mean,  smooth_k, fill = NA, align = "center")
+df_diff$Upper_s <- rollmean(df_diff$Upper, smooth_k, fill = NA, align = "center")
+df_diff$Lower_s <- rollmean(df_diff$Lower, smooth_k, fill = NA, align = "center")
+
+```
+
+```{r}
+# Last observed price before forecast window
+last_train_price <- tail(price[1:length(y_train)], 1)
+
+# Back-transform TEST mean to price level
+pred_price_mean <- cumsum(pred_te$mean) + last_train_price
+
+# Approx CI in price level:
+#   Option A (simple, often used): use residual SD from training
+resid_sd <- sd(y_train - pred_tr$mean, na.rm = TRUE)
+upper_price <- cumsum(pred_te$mean + 1.96*resid_sd) + last_train_price
+lower_price <- cumsum(pred_te$mean - 1.96*resid_sd) + last_train_price
+
+# Align lengths with actual test prices
+actual_price_test <- price[(length(y_train)+1):(length(y_train)+length(y_test))]
+L <- min(length(actual_price_test), length(pred_price_mean))
+df_price <- data.frame(
+  Index    = (length(y_train)+1):(length(y_train)+L),
+  Actual   = actual_price_test[1:L],
+  Mean     = pred_price_mean[1:L],
+  Upper    = upper_price[1:L],
+  Lower    = lower_price[1:L]
+)
+library(ggplot2)
+library(patchwork)
+
+# Top panel: price level (back-transformed)
+p_top <- ggplot(df_price, aes(Index)) +
+  geom_ribbon(aes(ymin = Lower, ymax = Upper), fill = "pink", alpha = 0.3) +
+  geom_line(aes(y = Actual), color = "black", linewidth = 1) +
+  geom_line(aes(y = Mean),   color = "red",   linewidth = 1) +
+  annotate("rect",
+           xmin = length(y_train), xmax = max(df_diff$Index),
+           ymin = -Inf, ymax = Inf, fill = "lightgreen", alpha = 0.1) +
+  labs(title = "GPR Forecast (Back-Transformed to Price Level)",
+       y = "USO Price", x = NULL) +
+  theme_minimal(base_size = 14)
+
+# Bottom panel: differenced series (smoothed mean + CI)
+p_bot <- ggplot(df_diff, aes(Index)) +
+  geom_ribbon(aes(ymin = Lower_s, ymax = Upper_s), fill = "pink", alpha = 0.3) +
+  geom_line(aes(y = Mean_s), color = "red", linewidth = 1) +
+  geom_line(aes(y = Actual), color = "black", linewidth = 0.5, alpha = 0.6) +
+  annotate("rect",
+           xmin = length(y_train), xmax = max(df_diff$Index),
+           ymin = -Inf, ymax = Inf, fill = "lightgreen", alpha = 0.1) +
+  labs(title = "GPR Fit in Differenced Space (Mean ± 95% CI)",
+       y = "Differenced Price", x = "Time Index") +
+  theme_minimal(base_size = 14)
+
+p_top / p_bot + plot_layout(heights = c(2, 1))
+
+```
+
+\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_

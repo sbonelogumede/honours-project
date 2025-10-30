@@ -1,0 +1,378 @@
+---
+title: "Untitled"
+format: pdf
+editor: visual
+---
+
+```{r}
+# USO gold Price Forecasting
+# Based on Jin & Xu (2025)
+# Dataset: FINAL_USO.csv
+
+library(kernlab)
+library(tidyverse)
+library(zoo)
+
+set.seed(123)
+
+# Set output directory (Windows path)
+output_dir <- "C:/Users/Michaela/Documents/AZRRAP001/honours-project/gold/output"
+
+# Create directory if it doesn't exist
+if (!dir.exists(output_dir)) {
+  dir.create(output_dir, recursive = TRUE)
+  cat(sprintf("Created output directory: %s\n", output_dir))
+}
+
+cat("\n", rep("=", 80), "\n", sep = "")
+cat("USO OIL PRICE FORECASTING - SIMPLIFIED ROBUST VERSION\n")
+cat(sprintf("Output directory: %s\n", output_dir))
+cat(rep("=", 80), "\n\n", sep = "")
+```
+
+# ============================================================================
+
+# 1. LOAD DATA
+
+# ============================================================================
+
+```{r}
+cat("Loading data...\n")
+data_path <- "FINAL_USO.csv"
+raw_data <- read.csv(data_path, stringsAsFactors = FALSE)
+raw_data$Date <- as.Date(raw_data$Date)
+
+uso_data <- raw_data %>%
+  select(Date, USO_Close) %>%
+  rename(date = Date, price = USO_Close) %>%
+  arrange(date) %>%
+  filter(!is.na(price), is.finite(price))
+
+cat(sprintf("Loaded %d observations\n", nrow(uso_data)))
+cat(sprintf("Date range: %s to %s\n\n", min(uso_data$date), max(uso_data$date)))
+```
+
+# ============================================================================
+
+# 2. FEATURE ENGINEERING
+
+# ============================================================================
+
+```{r}
+cat("Creating features...\n")
+
+create_features <- function(data, n_lags = 5) {
+  features <- data
+  
+  # Create fewer lags for stability
+  for (lag in 1:n_lags) {
+    features[[paste0("lag_", lag)]] <- dplyr::lag(data$price, lag)
+  }
+  
+  # Simple moving averages
+  features$ma_5 <- rollmean(data$price, 5, fill = NA, align = "right")
+  features$ma_10 <- rollmean(data$price, 10, fill = NA, align = "right")
+  
+  # Remove NA rows
+  features <- features %>% filter(complete.cases(.))
+  
+  return(features)
+}
+
+uso_features <- create_features(uso_data, n_lags = 5)
+cat(sprintf("Created %d features from %d observations\n\n", 
+            ncol(uso_features) - 2, nrow(uso_features)))
+```
+
+# ============================================================================
+
+# 3. TRAIN-TEST SPLIT
+
+# ============================================================================
+
+```{r}
+n_total <- nrow(uso_features)
+n_test <- round(n_total * 0.2)
+split_index <- n_total - n_test
+
+train_data <- uso_features[1:split_index, ]
+test_data <- uso_features[(split_index + 1):n_total, ]
+
+cat(sprintf("Train: %d | Test: %d observations\n\n", 
+            nrow(train_data), nrow(test_data)))
+
+feature_cols <- names(uso_features)[!names(uso_features) %in% c("date", "price")]
+X_train_raw <- as.matrix(train_data[, feature_cols])
+y_train <- train_data$price
+X_test_raw <- as.matrix(test_data[, feature_cols])
+y_test <- test_data$price
+```
+
+# ============================================================================
+
+# 4. SIMPLE GRID SEARCH (Instead of Bayesian Optimization)
+
+# ============================================================================
+
+```{r}
+cat("\n", rep("=", 80), "\n", sep = "")
+cat("GRID SEARCH FOR HYPERPARAMETERS (More Stable)\n")
+cat(rep("=", 80), "\n\n", sep = "")
+
+# Standardize features
+cat("Standardizing features...\n")
+train_mean <- colMeans(X_train_raw)
+train_sd <- apply(X_train_raw, 2, sd)
+train_sd[train_sd == 0] <- 1
+
+X_train_scaled <- scale(X_train_raw, center = train_mean, scale = train_sd)
+X_test_scaled <- scale(X_test_raw, center = train_mean, scale = train_sd)
+
+# Define parameter grid
+param_grid <- expand.grid(
+  sigma = c(0.05, 0.1, 0.2, 0.5),
+  variance = c(0.01, 0.05, 0.1)
+)
+
+cat(sprintf("Testing %d parameter combinations...\n\n", nrow(param_grid)))
+
+# Cross-validation function
+evaluate_params <- function(sigma, variance, X, y) {
+  
+  k_folds <- 3
+  n <- nrow(X)
+  fold_size <- floor(n / k_folds)
+  rmse_folds <- numeric(k_folds)
+  
+  for (fold in 1:k_folds) {
+    test_start <- (fold - 1) * fold_size + 1
+    test_end <- min(fold * fold_size, n)
+    test_idx <- test_start:test_end
+    train_idx <- setdiff(1:n, test_idx)
+    
+    tryCatch({
+      model <- gausspr(
+        X[train_idx, ], y[train_idx],
+        kernel = "rbfdot",
+        kpar = list(sigma = sigma),
+        var = variance,
+        type = "regression",
+        tol = 0.01
+      )
+      
+      pred <- predict(model, X[test_idx, ])
+      rmse_folds[fold] <- sqrt(mean((pred - y[test_idx])^2))
+      
+    }, error = function(e) {
+      rmse_folds[fold] <<- NA
+    })
+  }
+  
+  valid_rmse <- rmse_folds[!is.na(rmse_folds)]
+  if (length(valid_rmse) == 0) return(NA)
+  
+  return(mean(valid_rmse))
+}
+
+# Evaluate all combinations
+results_list <- list()
+for (i in 1:nrow(param_grid)) {
+  sigma <- param_grid$sigma[i]
+  variance <- param_grid$variance[i]
+  
+  cv_rmse <- evaluate_params(sigma, variance, X_train_scaled, y_train)
+  
+  results_list[[i]] <- data.frame(
+    sigma = sigma,
+    variance = variance,
+    cv_rmse = cv_rmse
+  )
+  
+  cat(sprintf("  σ=%.2f, var=%.2f -> CV RMSE: %.4f\n", 
+              sigma, variance, cv_rmse))
+}
+
+# Find best parameters
+results_df <- bind_rows(results_list)
+results_df <- results_df %>% filter(!is.na(cv_rmse))
+
+if (nrow(results_df) == 0) {
+  stop("All parameter combinations failed. Check your data for issues.")
+}
+
+best_idx <- which.min(results_df$cv_rmse)
+best_sigma <- results_df$sigma[best_idx]
+best_variance <- results_df$variance[best_idx]
+best_cv_rmse <- results_df$cv_rmse[best_idx]
+
+cat("\n", rep("=", 80), "\n", sep = "")
+cat("BEST PARAMETERS FOUND:\n")
+cat(rep("=", 80), "\n", sep = "")
+cat(sprintf("  Sigma:           %.4f\n", best_sigma))
+cat(sprintf("  Variance:        %.4f\n", best_variance))
+cat(sprintf("  CV RMSE:         %.4f\n", best_cv_rmse))
+cat(rep("=", 80), "\n\n", sep = "")
+```
+
+# ============================================================================
+
+# 5. TRAIN FINAL MODEL
+
+# ============================================================================
+
+```{r}
+cat("Training final model...\n")
+
+final_model <- gausspr(
+  X_train_scaled, y_train,
+  kernel = "rbfdot",
+  kpar = list(sigma = best_sigma),
+  var = best_variance,
+  type = "regression"
+)
+
+cat("Training complete!\n\n")
+
+# ============================================================================
+# 6. PREDICTIONS AND EVALUATION
+# ============================================================================
+
+cat("Making predictions...\n")
+
+y_pred <- predict(final_model, X_test_scaled)
+
+results <- data.frame(
+  date = test_data$date,
+  actual = y_test,
+  predicted = as.vector(y_pred),
+  error = y_test - as.vector(y_pred)
+)
+
+# Calculate metrics
+rmse <- sqrt(mean(results$error^2))
+mae <- mean(abs(results$error))
+mape <- mean(abs(results$error / results$actual)) * 100
+rrmse <- (rmse / mean(results$actual)) * 100
+correlation <- cor(results$actual, results$predicted)
+r_squared <- 1 - sum(results$error^2) / sum((results$actual - mean(results$actual))^2)
+
+# Direction accuracy
+actual_dir <- sign(diff(results$actual))
+pred_dir <- sign(diff(results$predicted))
+dir_acc <- mean(actual_dir == pred_dir) * 100
+
+cat("\n", rep("=", 80), "\n", sep = "")
+cat("MODEL PERFORMANCE METRICS\n")
+cat(rep("=", 80), "\n", sep = "")
+cat(sprintf("  RMSE:                    $%.4f\n", rmse))
+cat(sprintf("  MAE:                     $%.4f\n", mae))
+cat(sprintf("  MAPE:                    %.2f%%\n", mape))
+cat(sprintf("  Relative RMSE (RRMSE):   %.4f%%\n", rrmse))
+cat(sprintf("  Correlation:             %.4f\n", correlation))
+cat(sprintf("  R-squared:               %.4f\n", r_squared))
+cat(sprintf("  Direction Accuracy:      %.2f%%\n", dir_acc))
+cat(rep("=", 80), "\n\n", sep = "")
+```
+
+# ============================================================================
+
+# 7. VISUALIZATIONS
+
+# ============================================================================
+
+```{r}
+cat("Creating visualizations...\n")
+
+# Main plot
+p1 <- ggplot(results, aes(x = date)) +
+  geom_line(aes(y = actual, color = "Actual"), linewidth = 1.2) +
+  geom_line(aes(y = predicted, color = "Predicted"), 
+            linewidth = 0.8) +
+  scale_color_manual(values = c("Actual" = "black", "Predicted" = "#d62728")) +
+  labs(
+    title = "USO Gold Price Forecast",
+    
+    x = "Date",
+    y = "USO Price (USD)",
+    color = ""
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    legend.position = "bottom"
+  )
+
+ggsave(file.path(output_dir, "uso_simple_forecast.png"), p1,
+       width = 12, height = 7, dpi = 300)
+
+# Scatter plot
+p2 <- ggplot(results, aes(x = actual, y = predicted)) +
+  geom_point(alpha = 0.6, color = "#1f77b4", size = 2) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", 
+              color = "#d62728", linewidth = 1) +
+  labs(
+    title = "Actual vs Predicted",
+    
+    x = "Actual Price",
+    y = "Predicted Price"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(face = "bold"))
+
+ggsave(file.path(output_dir, "uso_simple_scatter.png"), p2,
+       width = 8, height = 8, dpi = 300)
+
+cat("Plots saved!\n\n")
+p1
+p2
+```
+
+# ============================================================================
+
+# 8. SAVE RESULTS
+
+# ============================================================================
+
+```{r}
+cat("Saving results...\n")
+
+write.csv(results, file.path(output_dir, "uso_simple_predictions.csv"),
+          row.names = FALSE)
+
+saveRDS(final_model, file.path(output_dir, "uso_simple_model.rds"))
+
+summary_df <- data.frame(
+  Metric = c("Best_Sigma", "Best_Variance", "CV_RMSE", "RMSE", "MAE", 
+             "MAPE", "RRMSE", "Correlation", "R_Squared", "Direction_Accuracy"),
+  Value = c(best_sigma, best_variance, best_cv_rmse, rmse, mae, 
+            mape, rrmse, correlation, r_squared, dir_acc)
+)
+
+write.csv(summary_df, file.path(output_dir, "uso_simple_summary.csv"),
+          row.names = FALSE)
+
+write.csv(results_df, file.path(output_dir, "uso_grid_search_results.csv"),
+          row.names = FALSE)
+
+cat("\n", rep("=", 80), "\n", sep = "")
+cat("ANALYSIS COMPLETE!\n")
+cat(rep("=", 80), "\n", sep = "")
+cat("\nFiles saved to:\n")
+cat(sprintf("  %s\n\n", output_dir))
+cat("Files created:\n")
+cat("  - uso_simple_predictions.csv\n")
+cat("  - uso_simple_model.rds\n")
+cat("  - uso_simple_summary.csv\n")
+cat("  - uso_grid_search_results.csv\n")
+cat("  - uso_simple_forecast.png\n")
+cat("  - uso_simple_scatter.png\n")
+cat("  - uso_simple_forecast.png\n")
+cat("  - uso_simple_scatter.png\n")
+cat("\n", rep("=", 80), "\n", sep = "")
+
+cat("\nSUMMARY:\n")
+cat(sprintf("  Best σ: %.4f | Best variance: %.4f\n", best_sigma, best_variance))
+cat(sprintf("  Test RRMSE: %.4f%% | R²: %.4f\n", rrmse, r_squared))
+cat(sprintf("  This simpler approach uses grid search instead of Bayesian optimization\n"))
+cat(sprintf("  but should be more numerically stable!\n\n"))
+```

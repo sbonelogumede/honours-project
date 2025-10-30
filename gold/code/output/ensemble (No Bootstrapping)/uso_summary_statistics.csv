@@ -1,0 +1,14 @@
+"Metric","Value"
+"N_Models",10
+"N_Valid_Models",10
+"Mean_Sigma",0.029
+"Mean_Variance",0.005
+"Ensemble_RMSE",0.166986861034786
+"Ensemble_MAE",0.12661125071888
+"Ensemble_MAPE",1.01230349838948
+"Ensemble_RRMSE",1.32339461354265
+"Ensemble_R2",0.990221821761926
+"Ensemble_Correlation",0.995353034354653
+"Direction_Accuracy",63.3431085043988
+"Avg_Individual_RRMSE",1.32652975085775
+"Ensemble_Improvement_Pct",0.236341274145831

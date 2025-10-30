@@ -1,0 +1,7 @@
+"Test","Hypothesis","Statistic","P_Value","Result"
+"Jarque-Bera","Normality",67.8884541212499,1.77635683940025e-15,"Fail"
+"Anderson-Darling","Normality",2.72092773098404,7.2570193164874e-07,"Fail"
+"Ljung-Box (lag 10)","No autocorrelation",25.9056955499553,0.00386911177000515,"Fail"
+"Durbin-Watson","No autocorrelation",1.78278741673332,0.0219852216022287,"Fail"
+"Breusch-Pagan","Homoskedasticity",0.00300008579643157,0.956319279944932,"Pass"
+"ARCH Effects","No ARCH effects",22.2158768615431,0.0140418314160523,"Fail"
