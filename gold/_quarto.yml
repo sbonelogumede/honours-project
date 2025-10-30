@@ -10,7 +10,7 @@ project:
 book:
   title: "Gaussian Processes for Time Series Modelling"
   author:
-    - name: "Raphaela Azah"
+    - name: "Raphaela Azar"
     - name: "Sbonelo Gumede"
   date: "2025"
   chapters:

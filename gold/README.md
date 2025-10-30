@@ -10,7 +10,7 @@ Honours Minor Dissertation
 Gaussian Processes for Time Series Modelling
 
 ## Authors
-Raphaela Azah and Sbonelo Gumede
+Raphaela Azar and Sbonelo Gumede
 
 ## Supervisor
 Professor Birgit Erni
